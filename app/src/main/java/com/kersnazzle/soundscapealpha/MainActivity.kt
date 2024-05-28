@@ -78,6 +78,9 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+
+        org.fmod.FMOD.init(applicationContext)
+
         super.onCreate(savedInstanceState)
 
         setContent {
@@ -92,9 +95,14 @@ class MainActivity : ComponentActivity() {
         checkAndRequestNotificationPermission()
 
         tryToBindToServiceIfRunning()
+        fmodmain()
     }
 
     override fun onDestroy() {
+        Log.e("soundscapealpha", "OnDestroy")
+        fmodstop()
+        org.fmod.FMOD.close()
+
         super.onDestroy()
         unbindService(connection)
     }
@@ -179,5 +187,13 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         private const val TAG = "MainActivity"
+        init {
+
+            System.loadLibrary("fmod")
+            System.loadLibrary("soundscape-audio")
+        }
     }
 }
+
+private external fun fmodmain()
+private external fun fmodstop()
