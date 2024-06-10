@@ -1,15 +1,15 @@
 package com.kersnazzle.soundscapealpha
 
+import android.os.Bundle
+import android.util.Log
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.Build
-import android.os.Bundle
 import android.os.IBinder
-import android.util.Log
 import android.widget.Toast
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+
     private var exampleService: LocationService? = null
 
     private var serviceBoundState by mutableStateOf(false)
@@ -95,12 +96,10 @@ class MainActivity : ComponentActivity() {
         checkAndRequestNotificationPermission()
 
         tryToBindToServiceIfRunning()
-        fmodmain()
-    }
 
+    }
     override fun onDestroy() {
         Log.e("soundscapealpha", "OnDestroy")
-        fmodstop()
         org.fmod.FMOD.close()
 
         super.onDestroy()
@@ -188,12 +187,8 @@ class MainActivity : ComponentActivity() {
     companion object {
         private const val TAG = "MainActivity"
         init {
-
             System.loadLibrary("fmod")
             System.loadLibrary("soundscape-audio")
         }
     }
 }
-
-private external fun fmodmain()
-private external fun fmodstop()

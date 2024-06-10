@@ -115,11 +115,16 @@ class LocationService : Service() {
 
         // Start secondary service
         startServiceRunningTicker()
+
+        // Start audio engine
+        fmodStart()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "onDestroy")
+
+        fmodStop();
 
         fusedLocationClient.removeLocationUpdates(locationCallback)
 
@@ -166,6 +171,8 @@ class LocationService : Service() {
             override fun onLocationResult(locationResult: LocationResult) {
                 for (location in locationResult.locations) {
                     _locationFlow.value = location
+
+                    updateLocation(location.latitude.toFloat(), location.longitude.toFloat());
                 }
             }
         }
@@ -183,8 +190,8 @@ class LocationService : Service() {
                 }*/
         listener = DeviceOrientationListener { orientation ->
             _orientationFlow.value = orientation  // Emit the DeviceOrientation object
+            updateHeading(orientation.headingDegrees.toInt())
         }
-
 
         // OUTPUT_PERIOD_DEFAULT = 50Hz / 20ms
         val request = DeviceOrientationRequest.Builder(DeviceOrientationRequest.OUTPUT_PERIOD_DEFAULT).build()
@@ -287,3 +294,7 @@ class LocationService : Service() {
         private const val NOTIFICATION_ID = 1000000
     }
 }
+private external fun fmodStart()
+private external fun fmodStop()
+private external fun updateHeading(heading: Int)
+private external fun updateLocation(latitude: Float, longitude: Float)

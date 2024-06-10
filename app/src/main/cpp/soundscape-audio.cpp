@@ -5,75 +5,112 @@
 #include <filesystem>
 #include <assert.h>
 #include <android/log.h>
+#include <fcntl.h>
+
+#define _USE_MATH_DEFINES
+#include <cmath>
 
 #define TRACE(...) __android_log_print(ANDROID_LOG_INFO, "soundscape-audio", __VA_ARGS__);
-#define ERRCHECK(a) TRACE("line %d, result %d", __LINE__, a);
+#define ERRCHECK(a) if(a) TRACE("line %d, result %d", __LINE__, a);
 
-const float DISTANCEFACTOR = 1.0f;          // Units per meter.  I.e feet would = 3.28.  centimeters would = 100.
 const int INTERFACE_UPDATETIME = 50;
 
 static bool running = true;
 static std::thread *t1;
 
-/* Cross platform OS Functions internal to the FMOD library, exposed for the example framework. */
-extern "C" {
-    typedef struct FMOD_OS_FILE            FMOD_OS_FILE;
-    typedef struct FMOD_OS_CRITICALSECTION FMOD_OS_CRITICALSECTION;
+//
+// C++ versions of GeoUtils functions
+//
+const double DEGREES_TO_RADIANS = 2.0 * M_PI / 360.0;
+const double RADIANS_TO_DEGREES = 1.0 / DEGREES_TO_RADIANS;
+const double EARTH_RADIUS_METERS = 6378137.0;   //  Original Soundscape uses 6378137.0 not 6371000.0
 
-    FMOD_RESULT F_API FMOD_OS_Time_GetUs(unsigned int *us);
-    FMOD_RESULT F_API FMOD_OS_Debug_Output(const char *format, ...);
-    FMOD_RESULT F_API FMOD_OS_File_Open(const char *name, int mode, unsigned int *filesize, FMOD_OS_FILE **handle);
-    FMOD_RESULT F_API FMOD_OS_File_Close(FMOD_OS_FILE *handle);
-    FMOD_RESULT F_API FMOD_OS_File_Read(FMOD_OS_FILE *handle, void *buf, unsigned int count, unsigned int *read);
-    FMOD_RESULT F_API FMOD_OS_File_Write(FMOD_OS_FILE *handle, const void *buffer, unsigned int bytesToWrite, bool flush);
-    FMOD_RESULT F_API FMOD_OS_File_Seek(FMOD_OS_FILE *handle, unsigned int offset);
-    FMOD_RESULT F_API FMOD_OS_Time_Sleep(unsigned int ms);
-    FMOD_RESULT F_API FMOD_OS_CriticalSection_Create(FMOD_OS_CRITICALSECTION **crit, bool memorycrit);
-    FMOD_RESULT F_API FMOD_OS_CriticalSection_Free(FMOD_OS_CRITICALSECTION *crit, bool memorycrit);
-    FMOD_RESULT F_API FMOD_OS_CriticalSection_Enter(FMOD_OS_CRITICALSECTION *crit);
-    FMOD_RESULT F_API FMOD_OS_CriticalSection_Leave(FMOD_OS_CRITICALSECTION *crit);
-    FMOD_RESULT F_API FMOD_OS_CriticalSection_TryEnter(FMOD_OS_CRITICALSECTION *crit, bool *entered);
-    FMOD_RESULT F_API FMOD_OS_CriticalSection_IsLocked(FMOD_OS_CRITICALSECTION *crit, bool *locked);
-    FMOD_RESULT F_API FMOD_OS_Thread_Create(const char *name, void (*callback)(void *param), void *param, FMOD_THREAD_AFFINITY affinity, FMOD_THREAD_PRIORITY priority, FMOD_THREAD_STACK_SIZE stacksize, void **handle);
-    FMOD_RESULT F_API FMOD_OS_Thread_Destroy(void *handle);
+// We use this for FMOD coordinates so that we can just pass in straight GPS values as if they
+// were X/Y coordinates. We can only do this because we're always close enough to our beacons to
+// consider the earth as flat. FMOD_DISTANCEFACTOR is set to the number of metres per degree of
+// longitude/latitude.
+const float FMOD_DISTANCEFACTOR = (2.0 * M_PI * EARTH_RADIUS_METERS) / 360.0;
+
+
+static double toRadians(double degrees)
+{
+    return degrees * DEGREES_TO_RADIANS;
 }
 
+static double fromRadians(double degrees)
+{
+    return degrees * RADIANS_TO_DEGREES;
+}
+
+static double bearingFromTwoPoints(
+        double lat1, double lon1,
+        double lat2, double lon2)
+{
+    auto latitude1 = toRadians(lat1);
+    auto latitude2 = toRadians(lat2);
+    auto longDiff = toRadians(lon2 - lon1);
+    auto y = sin(longDiff) * cos(latitude2);
+    auto x = cos(latitude1) * sin(latitude2) - sin(latitude1) * cos(latitude2) * cos(longDiff);
+
+    return ((int)(fromRadians(atan2(y, x)) + 360) % 360) - 180;
+}
+
+static void getDestinationCoordinate(double lat, double lon, double bearing, double distance, double &new_lat, double &new_lon)
+{
+    auto lat1 = toRadians(lat);
+    auto lon1 = toRadians(lon);
+
+    auto d = distance / EARTH_RADIUS_METERS; // Distance in radians
+
+    auto bearingRadians = toRadians(bearing);
+
+    auto lat2 = asin(sin(lat1) * cos(d) + cos(lat1) * sin(d) * cos(bearingRadians));
+    auto lon2 = lon1 + atan2(sin(bearingRadians) * sin(d) * cos(lat1),
+                                    cos(d) - sin(lat1) * sin(lat2));
+
+    new_lat = fromRadians(lat2);
+    new_lon = fromRadians(lon2);
+}
+
+double distance(double lat1, double long1, double lat2, double long2)
+{
+    auto deltaLat = toRadians(lat2 - lat1);
+    auto deltaLon = toRadians(long2 - long1);
+
+    auto a =
+        sin(deltaLat / 2) * sin(deltaLat / 2) + cos(toRadians(lat1)) * cos(toRadians(lat2)) * sin(
+                deltaLon / 2
+        ) * sin(
+                deltaLon / 2
+        );
+
+    auto c = 2 * asin(sqrt(a));
+
+    return (EARTH_RADIUS_METERS * c);
+}
+
+//
+//
+//
 class BeaconBuffer {
 public:
     BeaconBuffer(FMOD::System *system, const std::string &filename) {
-#if 1
-    FMOD::Sound* sound;
+        FMOD::Sound* sound;
 
-    auto result = system->createSound(filename.c_str(), FMOD_DEFAULT | FMOD_OPENONLY, NULL, &sound);
-    ERRCHECK(result);
-/*
-    FMOD_SOUND_FORMAT format;
-    FMOD_SOUND_TYPE type;
-    int bits, channels;
-    result = sound->getFormat(&type, &format, &channels, &bits);
-    ERRCHECK(result);
-*/
-    result = sound->getLength(&m_BufferSize, FMOD_TIMEUNIT_RAWBYTES);
-    ERRCHECK(result);
+        auto result = system->createSound(filename.c_str(), FMOD_DEFAULT | FMOD_OPENONLY, NULL, &sound);
+        ERRCHECK(result);
 
-    m_pBuffer = (unsigned char *)malloc(m_BufferSize);
+        result = sound->getLength(&m_BufferSize, FMOD_TIMEUNIT_RAWBYTES);
+        ERRCHECK(result);
 
-    unsigned int bytes_read;
-    result = sound->readData(m_pBuffer, m_BufferSize, &bytes_read);
-    ERRCHECK(result);
+        m_pBuffer = (unsigned char *)malloc(m_BufferSize);
 
-    result = sound->release();
-    ERRCHECK(result);
-#else
-        FMOD_OS_FILE *file = NULL;
-        unsigned int bytesread;
+        unsigned int bytes_read;
+        result = sound->readData(m_pBuffer, m_BufferSize, &bytes_read);
+        ERRCHECK(result);
 
-        FMOD_OS_File_Open(filename.c_str(), 0, &m_BufferSize, &file);
-        m_pBuffer = (char *)malloc(m_BufferSize);
-        FMOD_OS_File_Read(file, m_pBuffer, m_BufferSize, &bytesread);
-        assert(bytesread == m_BufferSize);
-        FMOD_OS_File_Close(file);
-#endif
+        result = sound->release();
+        ERRCHECK(result);
     }
 
     virtual ~BeaconBuffer() {
@@ -95,7 +132,6 @@ public:
         return datalen;
     }
 
-    void * GetBuffer() { return m_pBuffer; }
     unsigned int GetBufferSize() { return m_BufferSize; }
 
 private:
@@ -103,15 +139,17 @@ private:
     unsigned char *m_pBuffer = nullptr;
 };
 
-class BeaconBufferGroup
-{
+//
+//
+//
+class BeaconBufferGroup {
 public:
     BeaconBufferGroup(FMOD::System *system,
                       const std::string &filename1,
-                      const std::string &filename2)
-                : b1(system, filename1),
-                  b2(system, filename2)
-    {
+                      const std::string &filename2) {
+        m_pBuffers[0] = new BeaconBuffer(system, filename1);
+        m_pBuffers[1] = new BeaconBuffer(system, filename2);
+        m_CurrentBuffer = 0;
     }
 
     void CreateSound(FMOD::System *system, FMOD::Sound **sound) {
@@ -120,47 +158,58 @@ public:
         FMOD_CREATESOUNDEXINFO exinfo;
         memset(&exinfo, 0, sizeof(FMOD_CREATESOUNDEXINFO));
         exinfo.cbsize = sizeof(FMOD_CREATESOUNDEXINFO);  /* Required. */
-        exinfo.numchannels = 1;
-        exinfo.defaultfrequency = 44100;
-        exinfo.length = b1.GetBufferSize();                         /* Length of PCM data in bytes of whole song (for Sound::getLength) */
-        exinfo.decodebuffersize = exinfo.length / (4 * BEAT_COUNT);       /* Chunk size of stream update in samples. This will be the amount of data passed to the user callback. */
+        if (m_pBuffers[0]) {
+            exinfo.numchannels = 1;
+            exinfo.defaultfrequency = 44100;
+            exinfo.length = m_pBuffers[0]->GetBufferSize();                         /* Length of PCM data in bytes of whole song (for Sound::getLength) */
+            exinfo.decodebuffersize = exinfo.length / (4 *
+                                                       BEAT_COUNT);       /* Chunk size of stream update in samples. This will be the amount of data passed to the user callback. */
+        } else {
+            exinfo.numchannels = 1;
+            exinfo.defaultfrequency = 22050;
+            exinfo.length = exinfo.defaultfrequency;
+            exinfo.decodebuffersize = exinfo.defaultfrequency / 10;
+        }
         exinfo.format = FMOD_SOUND_FORMAT_PCM16;                    /* Data format of sound. */
         exinfo.pcmreadcallback = StaticPcmReadCallback;             /* User callback for reading. */
         exinfo.userdata = this;
 
         auto result = system->createSound(0,
-                                          FMOD_OPENUSER | FMOD_LOOP_NORMAL | FMOD_3D | FMOD_CREATESTREAM,
-                                                &exinfo,
-                                                sound);
+                                          FMOD_OPENUSER | FMOD_LOOP_NORMAL | FMOD_3D |
+                                          FMOD_CREATESTREAM,
+                                          &exinfo,
+                                          sound);
         ERRCHECK(result);
     }
 
     FMOD_RESULT F_CALLBACK PcmReadCallback(FMOD_SOUND *sound, void *data, unsigned int datalen) {
-        unsigned int bytes_read = m_pCurrentBuffer->Read(data, datalen, m_BytePos);
-        TRACE("PcmReadCallback %u @ %lu", bytes_read, m_BytePos);
+        unsigned int bytes_read = 0;
+        bytes_read = m_pBuffers[m_CurrentBuffer]->Read(data, datalen, m_BytePos);
+
+        //TRACE("PcmReadCallback %u @ %lu", bytes_read, m_BytePos);
         m_BytePos += bytes_read;
-        ++m_PingPongCount;
-        if(m_PingPongCount > 50) {
-            m_PingPongCount = 0;
-            if(m_pCurrentBuffer == &b1)
-                m_pCurrentBuffer = &b2;
-            else
-                m_pCurrentBuffer = &b1;
-            TRACE("PingPong");
-        }
+        if((degreesOffAxis > 90) || (degreesOffAxis < -90))
+            m_CurrentBuffer = 1;
+        else
+            m_CurrentBuffer = 0;
 
         return FMOD_OK;
+    }
+
+    void updateGeometry(int degrees_off_axis, int distance) {
+        degreesOffAxis = degrees_off_axis;
+        distanceFromListener = distance;
     }
 
 private:
     static FMOD_RESULT F_CALLBACK StaticPcmReadCallback(FMOD_SOUND* sound, void *data, unsigned int datalen);
     //FMOD_RESULT F_CALLBACK SeekCallback(FMOD::Sound* sound, int subsound, unsigned int position, FMOD_TIMEUNIT postype)    { return FMOD_OK}
 
-    BeaconBuffer b1;
-    BeaconBuffer b2;
-    BeaconBuffer *m_pCurrentBuffer = &b1;
+    BeaconBuffer *m_pBuffers[2];
+    int m_CurrentBuffer = -1;
     unsigned long m_BytePos = 0;
-    unsigned int m_PingPongCount  = 0;
+    int degreesOffAxis = 0;
+    int distanceFromListener = 0;
 };
 
 FMOD_RESULT F_CALLBACK BeaconBufferGroup::StaticPcmReadCallback(FMOD_SOUND* sound, void *data, unsigned int datalen) {
@@ -171,25 +220,34 @@ FMOD_RESULT F_CALLBACK BeaconBufferGroup::StaticPcmReadCallback(FMOD_SOUND* soun
     return FMOD_OK;
 }
 
+//
+//
+//
 class Beacon
 {
 public:
-    Beacon(FMOD::System *system, const std::string &filename1, const std::string &filename2)
+    Beacon(FMOD::System *system,
+           const std::string &filename1,
+           const std::string &filename2,
+           double latitude, double longitude)
         : m_BufferGroup(system, filename1, filename2)
     {
         FMOD_RESULT result;
 
+        m_Latitude = latitude;
+        m_Longitude = longitude;
+
         m_pSystem = system;
         m_BufferGroup.CreateSound(system, &m_pSound);
 
-        result = m_pSound->set3DMinMaxDistance(10.0f * DISTANCEFACTOR, 5000.0f * DISTANCEFACTOR);
+        result = m_pSound->set3DMinMaxDistance(10.0f * FMOD_DISTANCEFACTOR, 5000.0f * FMOD_DISTANCEFACTOR);
         ERRCHECK(result);
 
         result = m_pSound->setMode(FMOD_LOOP_NORMAL);
         ERRCHECK(result);
 
         {
-            FMOD_VECTOR pos = {-10.0f * DISTANCEFACTOR, 0.0f, 0.0f};
+            FMOD_VECTOR pos = {(float)m_Longitude, 0.0f, (float)m_Latitude};
             FMOD_VECTOR vel = {0.0f, 0.0f, 0.0f};
 
             result = m_pSystem->playSound(m_pSound, 0, false, &m_pChannel);
@@ -207,18 +265,44 @@ public:
         ERRCHECK(result);
     }
 
+    void updateGeometry(int heading, double latitude, double longitude) {
+        // Calculate how far off axis the beacon is given this new heading
+
+        // Calculate the beacon heading
+        auto long_delta = longitude  - m_Longitude;
+        auto lat_delta = latitude  - m_Latitude;
+        auto beacon_heading = (int)bearingFromTwoPoints(m_Latitude, m_Longitude, latitude, longitude);
+        auto degrees_off_axis = beacon_heading - heading;
+        if(degrees_off_axis > 180)
+            degrees_off_axis -= 360;
+        else if(degrees_off_axis < -180)
+            degrees_off_axis += 360;
+
+        int dist = (int)distance(latitude, longitude, m_Latitude, m_Longitude);
+        m_BufferGroup.updateGeometry(degrees_off_axis, dist);
+
+        TRACE("%d %d -> %d (%f %f), %dm", heading, beacon_heading, degrees_off_axis, lat_delta, long_delta, dist)
+    }
 
 private:
+    // We're going to assume that the beacons are close enough that the earth is effectively flat
+    double m_Latitude = 0.0;
+    double m_Longitude = 0.0;
+
     BeaconBufferGroup m_BufferGroup;
     FMOD::System *m_pSystem = nullptr;
     FMOD::Sound *m_pSound = nullptr;
     FMOD::Channel *m_pChannel = nullptr;
 };
 
-static Beacon *b1 = 0;
-void main_audio_loop(FMOD::System *system, Beacon *beacon)
+static Beacon *audio_beacon = 0;
+static Beacon *tts_beacon = 0;
+static int listener_heading = 0;
+static double listener_latitude = 0.0;
+static double listener_longitude = 0.0;
+void main_audio_loop(FMOD::System *system)
 {
-    FMOD_VECTOR listenerpos = {0.0f, 0.0f, -1.0f * DISTANCEFACTOR};
+    FMOD_VECTOR listenerpos = {0.0f, 0.0f, 0.0f};
     FMOD_RESULT result;
 
     do {
@@ -227,9 +311,11 @@ void main_audio_loop(FMOD::System *system, Beacon *beacon)
             static FMOD_VECTOR lastpos = {0.0f, 0.0f, 0.0f};
             FMOD_VECTOR forward = {0.0f, 0.0f, 1.0f};
             FMOD_VECTOR up = {0.0f, 1.0f, 0.0f};
-            FMOD_VECTOR vel;
+            FMOD_VECTOR vel =  {0.0f, 0.0f, 0.0f};
 
-            listenerpos.x = (float) sin(t * 0.05f) * 24.0f * DISTANCEFACTOR; // left right pingpong
+            // Set listener position
+            listenerpos.x = listener_longitude;
+            listenerpos.z = listener_latitude;
 
             // ********* NOTE ******* READ NEXT COMMENT!!!!!
             // vel = how far we moved last FRAME (m/f), then time compensate it to SECONDS (m/s).
@@ -240,8 +326,30 @@ void main_audio_loop(FMOD::System *system, Beacon *beacon)
             // store pos for next time
             lastpos = listenerpos;
 
+            // Set listener direction
+            float rads = (listener_heading * M_PI) / 180.0;
+            forward.z = cos(rads);
+            forward.x = sin(rads);
+
+            if((listener_latitude != 0.0) && !audio_beacon) {
+                // First valid location data that we have received so create a test beacon 100m
+                // from here at a bearing of 45 degrees
+                double beacon_latitude;
+                double beacon_longitude;
+                getDestinationCoordinate(listener_latitude, listener_longitude,
+                                         45, 100,
+                                         beacon_latitude, beacon_longitude);
+
+                audio_beacon = new Beacon(system,
+                                          "file:///android_asset/tactile_on_axis.wav",
+                                          "file:///android_asset/tactile_behind.wav",
+                                          beacon_latitude, beacon_longitude);
+            }
+            if(audio_beacon)
+                audio_beacon->updateGeometry(listener_heading, listener_latitude, listener_longitude);
+
             result = system->set3DListenerAttributes(0, &listenerpos, &vel, &forward, &up);
-            //ERRCHECK(result);
+            ERRCHECK(result);
 
             t += (30 * (1.0f /
                         (float) INTERFACE_UPDATETIME));    // t is just a time value .. it increments in 30m/s steps in this example
@@ -250,7 +358,6 @@ void main_audio_loop(FMOD::System *system, Beacon *beacon)
         result = system->update();
 
         usleep(50000);
-
     } while (running);
 
     ERRCHECK(0);
@@ -265,14 +372,16 @@ int FMOD_Startup() {
     // Create a System object and initialize
     FMOD::System_Create(&system);
 
+    result = system->setSoftwareFormat(22050, FMOD_SPEAKERMODE_SURROUND, 0);
+    ERRCHECK(result);
+
     result = system->init(32, FMOD_INIT_NORMAL, extradriverdata);
     ERRCHECK(result);
 
-    result = system->set3DSettings(1.0, DISTANCEFACTOR, 1.0f);
+    result = system->set3DSettings(1.0, FMOD_DISTANCEFACTOR, 1.0f);
     ERRCHECK(result);
 
-    b1 = new Beacon(system, "file:///android_asset/tactile_on_axis.wav", "file:///android_asset/tactile_behind.wav");
-    t1 = new std::thread(main_audio_loop, system, b1);
+    t1 = new std::thread(main_audio_loop, system);
 
     return 0;
 }
@@ -282,7 +391,7 @@ void FMOD_Shutdown()
     running = false;
     t1->join();
     delete t1;
-    delete b1;
+    delete audio_beacon;
 
 //    result = system->close();
 //    ERRCHECK(result);
@@ -291,12 +400,23 @@ void FMOD_Shutdown()
 }
 
 #include <jni.h>
-extern "C" void Java_com_kersnazzle_soundscapealpha_MainActivityKt_fmodmain(JNIEnv *env, jclass thiz)
+extern "C" void Java_com_kersnazzle_soundscapealpha_services_LocationServiceKt_fmodStart(JNIEnv *env, jclass thiz)
 {
     FMOD_Startup();
 }
 
-extern "C" void Java_com_kersnazzle_soundscapealpha_MainActivityKt_fmodstop(JNIEnv *env, jclass thiz)
+extern "C" void Java_com_kersnazzle_soundscapealpha_services_LocationServiceKt_fmodStop(JNIEnv *env, jclass thiz)
 {
     FMOD_Shutdown();
+}
+
+extern "C" void Java_com_kersnazzle_soundscapealpha_services_LocationServiceKt_updateHeading(JNIEnv *env, jclass thiz, jint heading)
+{
+    listener_heading = heading;
+}
+
+extern "C" void Java_com_kersnazzle_soundscapealpha_services_LocationServiceKt_updateLocation(JNIEnv *env, jclass thiz, jfloat latitude, jfloat longitude)
+{
+    listener_latitude = latitude;
+    listener_longitude = longitude;
 }
