@@ -30,6 +30,8 @@ import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.kersnazzle.soundscapealpha.R
+import com.kersnazzle.soundscapealpha.geojsonparser.geojson.LngLatAlt
+import com.kersnazzle.soundscapealpha.utils.*
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -63,6 +65,7 @@ class LocationService : Service() {
     private lateinit var fusedOrientationProviderClient: FusedOrientationProviderClient
     private lateinit var listener: DeviceOrientationListener
 
+    private var beaconCreated: Boolean = false
 
     // secondary service
     private var timerJob: Job? = null
@@ -189,13 +192,23 @@ class LocationService : Service() {
         listener = DeviceOrientationListener { orientation ->
             _orientationFlow.value = orientation  // Emit the DeviceOrientation object
             var location = locationFlow.value;
-            if(location != null)
-                systemUpdate(location.latitude.toFloat(),
-                             location.longitude.toFloat(),
-                             orientation.headingDegrees.toFloat());
+            if(location != null) {
+                if(!beaconCreated) {
+                    beaconCreated = true
+
+                    // Create test beacon
+                    var beaconLocation = getDestinationCoordinate(LngLatAlt(location.longitude.toDouble(), location.latitude.toDouble()), 45.0, 100.0)
+                    createBeacon(beaconLocation.latitude.toFloat(), beaconLocation.longitude.toFloat())
+                }
+                systemUpdate(
+                    location.latitude.toFloat(),
+                    location.longitude.toFloat(),
+                    orientation.headingDegrees.toFloat()
+                );
+            }
         }
 
-        // OUTPUT_PERIOD_DEFAULT = 50Hz / 20ms
+        // OUTPUT_PERIOD_DEFAULT = 50Hz / 20ms:
         val request = DeviceOrientationRequest.Builder(DeviceOrientationRequest.OUTPUT_PERIOD_DEFAULT).build()
         // Thought I could use a Looper here like for location but it seems to want an Executor instead
         // Not clear on what the difference is...
@@ -299,3 +312,4 @@ class LocationService : Service() {
 private external fun fmodStart()
 private external fun fmodStop()
 private external fun systemUpdate(latitude: Float, longitude: Float, heading: Float)
+private external fun createBeacon(latitude: Float, longitude: Float)

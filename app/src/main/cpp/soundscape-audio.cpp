@@ -147,19 +147,22 @@ public:
     BeaconBufferGroup(FMOD::System *system,
                       const std::string &filename1,
                       const std::string &filename2) {
+        TRACE("Create BeaconBufferGroup %p", this)
         m_pBuffers[0] = new BeaconBuffer(system, filename1);
         m_pBuffers[1] = new BeaconBuffer(system, filename2);
         m_CurrentBuffer = 0;
     }
     ~BeaconBufferGroup()
     {
-        TRACE("~BeaconBufferGroup");
+        TRACE("~BeaconBufferGroup %p", this);
         delete m_pBuffers[0];
         delete m_pBuffers[1];
     }
 
     void CreateSound(FMOD::System *system, FMOD::Sound **sound) {
 #define BEAT_COUNT 6        // This is taken from the original Soundscape
+
+        TRACE("BeaconBufferGroup CreateSound %p", this)
 
         FMOD_CREATESOUNDEXINFO exinfo;
         memset(&exinfo, 0, sizeof(FMOD_CREATESOUNDEXINFO));
@@ -191,7 +194,7 @@ public:
 
         unsigned int bytes_read = m_pBuffers[m_CurrentBuffer]->Read(data, datalen, m_BytePos);
         m_BytePos += bytes_read;
-        //TRACE("PcmReadCallback %u @ %lu", bytes_read, m_BytePos);
+        //TRACE("PcmReadCallback %d: %u @ %lu", m_CurrentBuffer, bytes_read, m_BytePos);
 
         return FMOD_OK;
     }
@@ -232,6 +235,8 @@ public:
         : m_BufferGroup(system, filename1, filename2)
     {
         FMOD_RESULT result;
+
+        TRACE("Create Beacon")
 
         m_Latitude = latitude;
         m_Longitude = longitude;
@@ -325,21 +330,6 @@ void systemUpdate(float lat, float lon, float heading)
     forward.x = sin(rads);
 
     //TRACE("heading: %d %f, %f %f", heading, rads, forward.x, forward.z)
-
-    if((lat != 0.0) && !audio_beacon) {
-        // First valid location data that we have received so create a test beacon 100m
-        // from here at a bearing of 45 degrees
-        double beacon_latitude;
-        double beacon_longitude;
-        getDestinationCoordinate(lat, lon,
-                                 45, 100,
-                              beacon_latitude, beacon_longitude);
-
-        audio_beacon = new Beacon(gSystem,
-                                  "file:///android_asset/tactile_on_axis.wav",
-                                  "file:///android_asset/tactile_behind.wav",
-                                  beacon_latitude, beacon_longitude);
-    }
     if(audio_beacon)
         audio_beacon->updateGeometry(heading, lat, lon);
 
@@ -373,11 +363,20 @@ void FMOD_Shutdown()
 {
     TRACE("FMOD_Shutdown");
     delete audio_beacon;
+    //audio_beacon = 0;
 
     auto result = gSystem->release();
     ERRCHECK(result);
-
     gSystem = 0;
+}
+
+void createBeacon(double lat, double lon)
+{
+    TRACE("Create new Beacon")
+    audio_beacon = new Beacon(gSystem,
+                              "file:///android_asset/tactile_on_axis.wav",
+                              "file:///android_asset/tactile_behind.wav",
+                              lat, lon);
 }
 
 #include <jni.h>
@@ -396,3 +395,9 @@ extern "C" void Java_com_kersnazzle_soundscapealpha_services_LocationServiceKt_s
     if(gSystem)
         systemUpdate(latitude, longitude, heading);
 }
+
+extern "C" void Java_com_kersnazzle_soundscapealpha_services_LocationServiceKt_createBeacon(JNIEnv *env, jclass thiz, jfloat latitude, jfloat longitude)
+{
+    createBeacon(latitude, longitude);
+}
+
