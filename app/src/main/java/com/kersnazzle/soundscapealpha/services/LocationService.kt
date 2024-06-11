@@ -171,8 +171,6 @@ class LocationService : Service() {
             override fun onLocationResult(locationResult: LocationResult) {
                 for (location in locationResult.locations) {
                     _locationFlow.value = location
-
-                    updateLocation(location.latitude.toFloat(), location.longitude.toFloat());
                 }
             }
         }
@@ -190,7 +188,11 @@ class LocationService : Service() {
                 }*/
         listener = DeviceOrientationListener { orientation ->
             _orientationFlow.value = orientation  // Emit the DeviceOrientation object
-            updateHeading(orientation.headingDegrees.toInt())
+            var location = locationFlow.value;
+            if(location != null)
+                systemUpdate(location.latitude.toFloat(),
+                             location.longitude.toFloat(),
+                             orientation.headingDegrees.toFloat());
         }
 
         // OUTPUT_PERIOD_DEFAULT = 50Hz / 20ms
@@ -296,5 +298,4 @@ class LocationService : Service() {
 }
 private external fun fmodStart()
 private external fun fmodStop()
-private external fun updateHeading(heading: Int)
-private external fun updateLocation(latitude: Float, longitude: Float)
+private external fun systemUpdate(latitude: Float, longitude: Float, heading: Float)

@@ -99,7 +99,7 @@ class MainActivity : ComponentActivity() {
 
     }
     override fun onDestroy() {
-        Log.e("soundscapealpha", "OnDestroy")
+        Log.e("soundscapealpha", "MainActivity OnDestroy")
         org.fmod.FMOD.close()
 
         super.onDestroy()
