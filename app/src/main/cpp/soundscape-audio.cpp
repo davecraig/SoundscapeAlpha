@@ -363,11 +363,11 @@ void FMOD_Shutdown()
 {
     TRACE("FMOD_Shutdown");
     delete audio_beacon;
-    //audio_beacon = 0;
+    audio_beacon = 0;
 
-    auto result = gSystem->release();
-    ERRCHECK(result);
-    gSystem = 0;
+    //auto result = gSystem->release();
+    //ERRCHECK(result);
+    //gSystem = 0;
 }
 
 void createBeacon(double lat, double lon)
