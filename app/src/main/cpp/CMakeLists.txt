@@ -27,7 +27,9 @@ project("soundscape-audio")
 # used in the AndroidManifest.xml file.
 add_library(${CMAKE_PROJECT_NAME} SHARED
     # List C/C++ source files with relative paths to this CMakeLists.txt.
-    soundscape-audio.cpp)
+    AudioEngine.cpp
+    AudioBeacon.cpp
+    AudioBeaconBuffer.cpp)
 
 set(FMOD_API_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/fmod/api)
 set( LIB_FMOD ${FMOD_API_ROOT}/core/lib/${ANDROID_ABI}/libfmod${FMOD_LIB_SUFFIX}.so )

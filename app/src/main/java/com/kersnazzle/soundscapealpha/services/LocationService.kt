@@ -11,7 +11,6 @@ import android.location.Location
 
 
 import android.os.Binder
-import android.os.Build
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
@@ -30,6 +29,7 @@ import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.kersnazzle.soundscapealpha.R
+import com.kersnazzle.soundscapealpha.audio.NativeAudioEngine
 import com.kersnazzle.soundscapealpha.geojsonparser.geojson.LngLatAlt
 import com.kersnazzle.soundscapealpha.utils.*
 
@@ -45,7 +45,6 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -65,7 +64,9 @@ class LocationService : Service() {
     private lateinit var fusedOrientationProviderClient: FusedOrientationProviderClient
     private lateinit var listener: DeviceOrientationListener
 
-    private var beaconCreated: Boolean = false
+    private val audioEngine = NativeAudioEngine()
+    private var audioBeacon: Long = 0
+    private var audioBeaconCreated: Boolean = false
 
     // secondary service
     private var timerJob: Job? = null
@@ -120,14 +121,14 @@ class LocationService : Service() {
         startServiceRunningTicker()
 
         // Start audio engine
-        fmodStart()
+        audioEngine.initialize()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "onDestroy")
 
-        fmodStop();
+        audioEngine.destroy()
 
         fusedLocationClient.removeLocationUpdates(locationCallback)
 
@@ -191,20 +192,20 @@ class LocationService : Service() {
                 }*/
         listener = DeviceOrientationListener { orientation ->
             _orientationFlow.value = orientation  // Emit the DeviceOrientation object
-            var location = locationFlow.value;
+            val location = locationFlow.value
             if(location != null) {
-                if(!beaconCreated) {
-                    beaconCreated = true
+                if(!audioBeaconCreated) {
+                    audioBeaconCreated = true
 
-                    // Create test beacon
-                    var beaconLocation = getDestinationCoordinate(LngLatAlt(location.longitude.toDouble(), location.latitude.toDouble()), 45.0, 100.0)
-                    createBeacon(beaconLocation.latitude.toFloat(), beaconLocation.longitude.toFloat())
+                    // Create test beacon near here
+                    val beaconLocation = getDestinationCoordinate(LngLatAlt(location.longitude, location.latitude), 45.0, 100.0)
+                    audioBeacon = audioEngine.createBeacon(beaconLocation.latitude, beaconLocation.longitude)
                 }
-                systemUpdate(
-                    location.latitude.toFloat(),
-                    location.longitude.toFloat(),
-                    orientation.headingDegrees.toFloat()
-                );
+                audioEngine.updateGeometry(
+                    location.latitude,
+                    location.longitude,
+                    orientation.headingDegrees.toDouble()
+                )
             }
         }
 
@@ -309,7 +310,3 @@ class LocationService : Service() {
         private const val NOTIFICATION_ID = 1000000
     }
 }
-private external fun fmodStart()
-private external fun fmodStop()
-private external fun systemUpdate(latitude: Float, longitude: Float, heading: Float)
-private external fun createBeacon(latitude: Float, longitude: Float)

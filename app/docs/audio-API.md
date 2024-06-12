@@ -101,3 +101,54 @@ From [Android 13 onwards, there's a Spatializer](https://source.android.com/docs
 2. Head tracking remains within FMOD. This would still have the advantage that the Spatializer would be turning the 5.0 into binaural audio, and the user would always be facing the main LCR speakers. However, the latency would be worse than option 1. 
 
 To support head tracking prior to Android 13 we have to try and implement option 2 anyway, so perhaps we do that first and then see how the latency is? An initial approach would be simply to use the phone direction (compass) in place of head tracking.
+
+
+## Audio Engine Kotlin classes
+
+There's [a great video](https://www.youtube.com/watch?v=Zwmhp7W6K6E) showing how to map Kotlin classes over to C++. The Kotlin class simply has a `long` which is the pointer to the C++ object and then this is passed into C wrapper functions which forward calls on to the C++ objects. The other useful bit is the `synchronized` keyword and the way that the Kotlin member functions are defined. With this knowledge we can then simply design Kotlin classes for the audio engine. The current classes we have in C++ from the proof of concept are:
+
+```mermaid
+---
+title: C++ audio classes
+---
+classDiagram
+
+    class BeaconBuffer{
+        +void * m_pBuffer;
+        +unsigned int m_BufferSize;
+
+        BeaconBuffer(const std::string &filename)
+        readData(void *data, unsigned int datalen, unsigned long pos)
+        unsigned int GetBufferSize()    
+    }
+    
+    class BeaconBufferGroup{
+        BeaconBufferGroup(list std::string& filenames)
+        void createSound(FMOD::Sound **sound)
+        void updateGeometry(double degrees_off_axis, double distance)
+        unsigned int pcmReadCallback(FMOD_SOUND *sound, void *data, unsigned int datalen)
+        +vector BeaconBuffer m_BeaconBuffers // Buffers for different headings
+        +unsigned int m_CurrentBuffer // Which buffer is currently playing
+    }
+
+    class Beacon{
+        Beacon(list std::string& filenames, double latitude, double longitude)
+        updateGeometry(double heading, double latitude, double longitude)
+        +BeaconBufferGroup m_BufferGroup
+        +double m_Latitude
+        +double m_Longitude
+    }
+    
+    BeaconBufferGroup *-- BeaconBuffer
+    Beacon *-- BeaconBufferGroup
+```
+
+The only thing that Kotlin needs to be able to do is create and destroy Beacons. An `AudioEngine` class to wrap this behaviour up with audio initialization and destruction makes sense.
+
+```
+interface AudioEngine{
+    createBeacon(latitude: Float, longitude: Float)
+    destroyBeacon()
+    updateGeometry(float latitude, float longitude, float heading)
+}
+```
