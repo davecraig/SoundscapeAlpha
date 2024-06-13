@@ -3,6 +3,9 @@
 #include "fmod.hpp"
 #include "fmod.h"
 #include <string>
+#include <atomic>
+
+#include "AudioEngine.h"
 
 namespace soundscape {
 
@@ -21,27 +24,50 @@ namespace soundscape {
         unsigned char *m_pBuffer = nullptr;
     };
 
-    class BeaconBufferGroup {
+    class BeaconAudioSource {
     public:
-        BeaconBufferGroup(FMOD::System *system,
-                          const std::string &filename1,
-                          const std::string &filename2);
+        BeaconAudioSource(PositionedAudio *parent) : m_pParent(parent) {}
+        virtual ~BeaconAudioSource() {}
 
-        ~BeaconBufferGroup();
+        virtual void CreateSound(FMOD::System *system, FMOD::Sound **sound) = 0;
+        virtual FMOD_RESULT F_CALLBACK PcmReadCallback(void *data, unsigned int data_length) = 0;
 
-        void CreateSound(FMOD::System *system, FMOD::Sound **sound);
+        void UpdateGeometry(double degrees_off_axis, int distance);
 
-        FMOD_RESULT F_CALLBACK PcmReadCallback(FMOD_SOUND *sound, void *data, unsigned int data_length);
+    protected:
+        PositionedAudio *m_pParent;
 
-        void updateGeometry(double degrees_off_axis, int distance);
-
-    private:
         static FMOD_RESULT F_CALLBACK
         StaticPcmReadCallback(FMOD_SOUND *sound, void *data, unsigned int data_length);
 
+        std::atomic<double> degreesOffAxis;
+    };
+
+    class BeaconBufferGroup : public BeaconAudioSource {
+    public:
+        BeaconBufferGroup(const AudioEngine *ae, PositionedAudio *parent);
+        virtual ~BeaconBufferGroup();
+
+        virtual void CreateSound(FMOD::System *system, FMOD::Sound **sound);
+        virtual FMOD_RESULT F_CALLBACK PcmReadCallback(void *data, unsigned int data_length);
+
+    private:
         BeaconBuffer *m_pBuffers[2];
         int m_CurrentBuffer = -1;
         unsigned long m_BytePos = 0;
-        double degreesOffAxis = 0;
     };
+
+    class TtsAudioSource : public BeaconAudioSource {
+    public:
+        TtsAudioSource(const AudioEngine *ae, PositionedAudio *parent, int tts_socket);
+        virtual ~TtsAudioSource();
+
+        virtual void CreateSound(FMOD::System *system, FMOD::Sound **sound);
+        virtual FMOD_RESULT F_CALLBACK PcmReadCallback(void *data, unsigned int data_length);
+
+    private:
+        int m_TtsSocket;
+        bool m_MidStream = false;
+    };
+
 }

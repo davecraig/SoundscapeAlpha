@@ -97,7 +97,7 @@ The two directions that can be available within Android are:
 
 From [Android 13 onwards, there's a Spatializer](https://source.android.com/docs/core/audio/spatial) which can take surround sound input and automatically add head tracking. It's not clear that all phone support this as the head tracking/spatializer link has to be implemented by the phone manufacturer. My Pixel 8 does have this, and I can turn it on and enable spatialization on my Bluetooth headphones. To utilize this, FMOD is switched to output in surround sound mode ```setSoftwareFormat(22050, FMOD_SPEAKERMODE_SURROUND, 0)```. The FMOD engine places the mono sound sources in the 5.0 speaker field and then plays that out. Android then passes that 5.0 output through its Spatializer to apply HRTFs and turn the audio into binaural for headphones. There are two possibilities for implementing head tracking:
 
-1. Head tracking is done within the Spatializer. The 5.0 soundfield would be fixed e.g. as if the 'cinema' were oriented with the screen on the North wall and any head tracking would be done outwith FMOD. The upside of this should be that it's the lowest latency possible, but I'd worry that the spatial resolution may be poorer when facing South towards a Beacon. In that case FMOD will be rendering the Beacon on the rear right/left speakers and then the Spatializer would be using head tracking to turn that around. Needs some testing/investigation.
+1. Head tracking is done within the Spatializer. The 5.0 soundfield would be fixed e.g. as if the 'cinema' were oriented with the screen on the North wall and any head tracking would be done outwith FMOD. The upside of this should be that it's the lowest latency possible, but I'd worry that the spatial resolution may be poorer when facing South towards a PositionedAudio. In that case FMOD will be rendering the PositionedAudio on the rear right/left speakers and then the Spatializer would be using head tracking to turn that around. Needs some testing/investigation.
 2. Head tracking remains within FMOD. This would still have the advantage that the Spatializer would be turning the 5.0 into binaural audio, and the user would always be facing the main LCR speakers. However, the latency would be worse than option 1. 
 
 To support head tracking prior to Android 13 we have to try and implement option 2 anyway, so perhaps we do that first and then see how the latency is? An initial approach would be simply to use the phone direction (compass) in place of head tracking.
@@ -125,22 +125,22 @@ classDiagram
     class BeaconBufferGroup{
         BeaconBufferGroup(list std::string& filenames)
         void createSound(FMOD::Sound **sound)
-        void updateGeometry(double degrees_off_axis, double distance)
+        void UpdateGeometry(double degrees_off_axis, double distance)
         unsigned int pcmReadCallback(FMOD_SOUND *sound, void *data, unsigned int datalen)
         +vector BeaconBuffer m_BeaconBuffers // Buffers for different headings
         +unsigned int m_CurrentBuffer // Which buffer is currently playing
     }
 
-    class Beacon{
-        Beacon(list std::string& filenames, double latitude, double longitude)
-        updateGeometry(double heading, double latitude, double longitude)
+    class PositionedAudio{
+        PositionedAudio(list std::string& filenames, double latitude, double longitude)
+        UpdateGeometry(double heading, double latitude, double longitude)
         +BeaconBufferGroup m_BufferGroup
         +double m_Latitude
         +double m_Longitude
     }
     
     BeaconBufferGroup *-- BeaconBuffer
-    Beacon *-- BeaconBufferGroup
+    PositionedAudio *-- BeaconBufferGroup
 ```
 
 The only thing that Kotlin needs to be able to do is create and destroy Beacons. An `AudioEngine` class to wrap this behaviour up with audio initialization and destruction makes sense.
@@ -149,6 +149,6 @@ The only thing that Kotlin needs to be able to do is create and destroy Beacons.
 interface AudioEngine{
     createBeacon(latitude: Float, longitude: Float)
     destroyBeacon()
-    updateGeometry(float latitude, float longitude, float heading)
+    UpdateGeometry(float latitude, float longitude, float heading)
 }
 ```

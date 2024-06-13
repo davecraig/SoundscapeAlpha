@@ -37,7 +37,7 @@ namespace soundscape {
 
         {
             std::lock_guard<std::recursive_mutex> guard(m_BeaconsMutex);
-            // Deleting the Beacon calls RemoveBeacon which removes it from m_Beacons
+            // Deleting the PositionedAudio calls RemoveBeacon which removes it from m_Beacons
             while(!m_Beacons.empty())
             {
                 delete *m_Beacons.begin();
@@ -51,7 +51,7 @@ namespace soundscape {
     }
 
     void
-    AudioEngine::updateGeometry(double listenerLatitude, double listenerLongitude,
+    AudioEngine::UpdateGeometry(double listenerLatitude, double listenerLongitude,
                                 double listenerHeading) {
         const FMOD_VECTOR up = {0.0f, 1.0f, 0.0f};
 
@@ -81,8 +81,18 @@ namespace soundscape {
         //TRACE("heading: %d %f, %f %f", heading, rads, forward.x, forward.z)
         {
             std::lock_guard<std::recursive_mutex> guard(m_BeaconsMutex);
-            for(auto const &it: m_Beacons)
-                it->updateGeometry(listenerHeading, listenerLatitude, listenerLongitude);
+            auto it = m_Beacons.begin();
+            while(it != m_Beacons.end()) {
+                if((*it)->IsEof()) {
+                    TRACE("Remove EOF beacon");
+                    delete *it;
+                    it = m_Beacons.begin();
+                    continue;
+                }
+
+                (*it)->UpdateGeometry(listenerHeading, listenerLatitude, listenerLongitude);
+                ++it;
+            }
         }
 
         auto result = m_pSystem->set3DListenerAttributes(0, &listener_position, &vel, &forward, &up);
@@ -92,21 +102,31 @@ namespace soundscape {
         ERROR_CHECK(result);
     }
 
-    void AudioEngine::setBeaconType(int beaconType)
+    void AudioEngine::SetBeaconType(int beaconType)
     {
         TRACE("BeaconType: %d", beaconType);
     }
 
-    void AudioEngine::AddBeacon(Beacon *beacon)
+    const BeaconDescriptor *AudioEngine::GetBeaconDescriptor() const
+    {
+        const static BeaconDescriptor bd({ "file:///android_asset/tactile_on_axis.wav", "file:///android_asset/tactile_behind.wav" });
+
+        return &bd;
+    }
+
+    void AudioEngine::AddBeacon(PositionedAudio *beacon)
     {
         std::lock_guard<std::recursive_mutex> guard(m_BeaconsMutex);
         m_Beacons.insert(beacon);
+        TRACE("AddBeacon -> %d beacons", m_Beacons.size());
     }
 
-    void AudioEngine::RemoveBeacon(Beacon *beacon)
+    void AudioEngine::RemoveBeacon(PositionedAudio *beacon)
     {
         std::lock_guard<std::recursive_mutex> guard(m_BeaconsMutex);
         m_Beacons.erase(beacon);
+
+        TRACE("RemoveBeacon -> %d beacons", m_Beacons.size());
     }
 
 
@@ -151,9 +171,9 @@ Java_com_kersnazzle_soundscapealpha_audio_NativeAudioEngine_updateGeometry(JNIEn
             reinterpret_cast<soundscape::AudioEngine*>(engine_handle);
 
     if (ae) {
-        ae->updateGeometry(latitude, longitude, heading);
+        ae->UpdateGeometry(latitude, longitude, heading);
     } else {
-        TRACE("updateGeometry failed - no AudioEngine");
+        TRACE("UpdateGeometry failed - no AudioEngine");
     }
 }
 extern "C"
@@ -165,9 +185,9 @@ Java_com_kersnazzle_soundscapealpha_audio_NativeAudioEngine_setBeaconType(JNIEnv
             reinterpret_cast<soundscape::AudioEngine*>(engine_handle);
 
     if (ae) {
-        ae->setBeaconType(beacon_type);
+        ae->SetBeaconType(beacon_type);
     } else {
-        TRACE("setBeaconType failed - no AudioEngine");
+        TRACE("SetBeaconType failed - no AudioEngine");
     }
 }
 
@@ -181,15 +201,33 @@ Java_com_kersnazzle_soundscapealpha_audio_NativeAudioEngine_createNativeBeacon(J
     auto* ae = reinterpret_cast<soundscape::AudioEngine*>(engine_handle);
     if(ae) {
 
-        auto beacon = std::make_unique<soundscape::Beacon>(ae,
-                                       "file:///android_asset/tactile_on_axis.wav",
-                                       "file:///android_asset/tactile_behind.wav",
-                                       latitude, longitude);
+        auto beacon = std::make_unique<soundscape::Beacon>(ae, latitude, longitude);
         if (not beacon) {
             TRACE("Failed to create audio beacon");
             beacon.reset(nullptr);
         }
         return reinterpret_cast<jlong>(beacon.release());
+    }
+    return 0L;
+}
+
+extern "C"
+JNIEXPORT jlong JNICALL
+Java_com_kersnazzle_soundscapealpha_audio_NativeAudioEngine_createNativeTextToSpeech(JNIEnv *env MAYBE_UNUSED,
+                                                                                     jobject thiz MAYBE_UNUSED,
+                                                                                     jlong engine_handle,
+                                                                                     jdouble latitude,
+                                                                                     jdouble longitude,
+                                                                                     jint tts_socket) {
+    auto* ae = reinterpret_cast<soundscape::AudioEngine*>(engine_handle);
+    if(ae) {
+
+        auto tts = std::make_unique<soundscape::TextToSpeech>(ae, latitude, longitude, tts_socket);
+        if (not tts) {
+            TRACE("Failed to create text to speech");
+            tts.reset(nullptr);
+        }
+        return reinterpret_cast<jlong>(tts.release());
     }
     return 0L;
 }

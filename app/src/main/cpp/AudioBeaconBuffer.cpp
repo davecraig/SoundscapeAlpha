@@ -9,6 +9,8 @@
 #include <cmath>
 #include <jni.h>
 #include "AudioBeaconBuffer.h"
+#include "BeaconDescriptor.h"
+#include "AudioBeacon.h"
 
 using namespace soundscape;
 
@@ -55,13 +57,19 @@ unsigned int BeaconBuffer::Read(void *data, unsigned int data_length, unsigned l
 //
 //
 //
-BeaconBufferGroup::BeaconBufferGroup(FMOD::System *system,
-                  const std::string &filename1,
-                  const std::string &filename2)
+BeaconBufferGroup::BeaconBufferGroup(const AudioEngine *ae, PositionedAudio *parent)
+: BeaconAudioSource(parent)
 {
     TRACE("Create BeaconBufferGroup %p", this);
-    m_pBuffers[0] = new BeaconBuffer(system, filename1);
-    m_pBuffers[1] = new BeaconBuffer(system, filename2);
+
+    auto bd = ae->GetBeaconDescriptor();
+
+    int index = 0;
+    auto system = ae->GetFmodSystem();
+    for(const auto &filename: bd->m_Filenames) {
+        m_pBuffers[index] = new BeaconBuffer(system, filename);
+        ++index;
+    }
     m_CurrentBuffer = 0;
 }
 
@@ -99,7 +107,7 @@ void BeaconBufferGroup::CreateSound(FMOD::System *system, FMOD::Sound **sound)
     ERROR_CHECK(result);
 }
 
-FMOD_RESULT F_CALLBACK BeaconBufferGroup::PcmReadCallback(FMOD_SOUND * sound MAYBE_UNUSED, void *data, unsigned int data_length)
+FMOD_RESULT F_CALLBACK BeaconBufferGroup::PcmReadCallback(void *data, unsigned int data_length)
 {
     // TODO: Initial switch between sounds based on beacon relative heading
     if((degreesOffAxis > 90) || (degreesOffAxis < -90))
@@ -109,20 +117,120 @@ FMOD_RESULT F_CALLBACK BeaconBufferGroup::PcmReadCallback(FMOD_SOUND * sound MAY
 
     unsigned int bytes_read = m_pBuffers[m_CurrentBuffer]->Read(data, data_length, m_BytePos);
     m_BytePos += bytes_read;
-    //TRACE("PcmReadCallback %d: %u @ %lu", m_CurrentBuffer, bytes_read, m_BytePos);
+    //TRACE("BBG callback %d: %u @ %lu", m_CurrentBuffer, bytes_read, m_BytePos);
 
     return FMOD_OK;
 }
 
-FMOD_RESULT F_CALLBACK BeaconBufferGroup::StaticPcmReadCallback(FMOD_SOUND* sound, void *data, unsigned int data_length) {
-    BeaconBufferGroup *bg;
+//
+//
+//
+
+TtsAudioSource::TtsAudioSource(const AudioEngine *ae MAYBE_UNUSED, PositionedAudio *parent, int tts_socket)
+              : BeaconAudioSource(parent),
+                m_TtsSocket(tts_socket)
+{
+}
+
+TtsAudioSource::~TtsAudioSource()
+{
+}
+
+void TtsAudioSource::CreateSound(FMOD::System *system, FMOD::Sound **sound)
+{
+    FMOD_CREATESOUNDEXINFO extra_info;
+
+    memset(&extra_info, 0, sizeof(FMOD_CREATESOUNDEXINFO));
+    extra_info.cbsize = sizeof(FMOD_CREATESOUNDEXINFO);
+
+    extra_info.numchannels = 1;
+    extra_info.defaultfrequency = 22050;
+    extra_info.length = extra_info.defaultfrequency;
+    extra_info.decodebuffersize = extra_info.defaultfrequency / 10;
+
+    extra_info.format = FMOD_SOUND_FORMAT_PCM16;                    /* Data format of sound. */
+    extra_info.pcmreadcallback = StaticPcmReadCallback;             /* User callback for reading. */
+    extra_info.userdata = this;
+
+    auto result = system->createSound(0,
+                                      FMOD_OPENUSER | FMOD_LOOP_OFF | FMOD_3D |
+                                      FMOD_CREATESTREAM,
+                                      &extra_info,
+                                      sound);
+    ERROR_CHECK(result);
+
+}
+FMOD_RESULT F_CALLBACK TtsAudioSource::PcmReadCallback(void *data, unsigned int data_length)
+{
+    // The text to speech data is sent over a socket from Kotlin. When the data ends, it
+    // currently just results in a short packet but no sign of EOF. The current m_MidStream state
+    // is a hack that works on my phone. What's probably required is the Kotlin code to spot the
+    // end of the utterance and close its socket. Until I figure that out, this will do.
+    // Marking the Beacon as EOF means that next time through the system update loop the Sound
+    // will be destroyed.
+    // TODO: Close the socket on the Kotlin end when the speech is fully synthesised and handle
+    //       that here - obviously we need to read all the data that was written prior to the close
+
+    ssize_t total_bytes_read = 0;
+    ssize_t bytes_read;
+    unsigned char *write_ptr = (unsigned char *)data;
+    while(data_length > 0) {
+        bytes_read = read(m_TtsSocket, write_ptr, data_length);
+        //TRACE("%p: read %zd/%zd/%u", this, bytes_read, total_bytes_read, data_length);
+        if(bytes_read == 0) {
+            if(total_bytes_read == 0) {
+                TRACE("TTS EOF");
+                return FMOD_ERR_FILE_EOF;
+            }
+            else
+                break;
+        }
+        else if(bytes_read == -1)
+            break;
+
+        write_ptr += bytes_read;
+        data_length -= bytes_read;
+        total_bytes_read += bytes_read;
+
+        if(m_MidStream && (data_length != 0))
+            break;
+    }
+
+    //TRACE("TTS callback %zd/%u", total_bytes_read, data_length);
+    memset(write_ptr, 0, data_length);
+
+    if(!m_MidStream)
+    {
+        if((bytes_read == total_bytes_read) && (data_length == 0)) {
+            m_MidStream = true;
+            //TRACE("MID STREAM!");
+        }
+    }
+    else
+    {
+        if((bytes_read != total_bytes_read) || (data_length != 0)) {
+            TRACE("Deduced TTS EOF");
+            m_pParent->Eof();
+            return FMOD_ERR_FILE_EOF;
+        }
+    }
+    return FMOD_OK;
+}
+
+
+//
+//
+//
+FMOD_RESULT F_CALLBACK BeaconAudioSource::StaticPcmReadCallback(FMOD_SOUND* sound, void *data, unsigned int data_length) {
+    BeaconAudioSource *bg;
     ((FMOD::Sound*)sound)->getUserData((void **)&bg);
-    bg->PcmReadCallback(sound, data, data_length);
+    bg->PcmReadCallback(data, data_length);
 
     return FMOD_OK;
 }
 
-void BeaconBufferGroup::updateGeometry(double degrees_off_axis, int distance MAYBE_UNUSED)
+void BeaconAudioSource::UpdateGeometry(double degrees_off_axis, int distance MAYBE_UNUSED)
 {
     degreesOffAxis = degrees_off_axis;
 }
+

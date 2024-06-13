@@ -7,22 +7,37 @@
 #include "AudioEngine.h"
 using namespace soundscape;
 
-Beacon::Beacon(AudioEngine *engine,
-       const std::string &filename1,
-       const std::string &filename2,
-       double latitude, double longitude)
-        : m_BufferGroup(engine->getFmodSystem(), filename1, filename2)
+PositionedAudio::PositionedAudio(AudioEngine *engine,
+                                 double latitude, double longitude)
 {
-    FMOD_RESULT result;
-
-    TRACE("%s %p", __FUNCTION__, this);
+    m_Eof = false;
 
     m_Latitude = latitude;
     m_Longitude = longitude;
 
     m_pEngine = engine;
-    m_pSystem = engine->getFmodSystem();
-    m_BufferGroup.CreateSound(m_pSystem, &m_pSound);
+    m_pSystem = engine->GetFmodSystem();
+}
+
+PositionedAudio::~PositionedAudio() {
+    TRACE("%s %p", __FUNCTION__, this);
+    m_pEngine->RemoveBeacon(this);
+
+    auto result = m_pSound->release();
+    ERROR_CHECK(result);
+
+    TRACE("%s %p done", __FUNCTION__, this);
+}
+
+void PositionedAudio::Init()
+{
+    FMOD_RESULT result;
+
+    CreateAudioSource();
+
+    TRACE("%s %p", __FUNCTION__, this);
+
+    m_pAudioSource->CreateSound(m_pSystem, &m_pSound);
 
     result = m_pSound->set3DMinMaxDistance(10.0f * FMOD_DISTANCE_FACTOR, 5000.0f * FMOD_DISTANCE_FACTOR);
     ERROR_CHECK(result);
@@ -43,17 +58,7 @@ Beacon::Beacon(AudioEngine *engine,
     m_pEngine->AddBeacon(this);
 }
 
-Beacon::~Beacon() {
-    TRACE("%s %p", __FUNCTION__, this);
-    m_pEngine->RemoveBeacon(this);
-
-    auto result = m_pSound->release();
-    ERROR_CHECK(result);
-
-    TRACE("%s %p done", __FUNCTION__, this);
-}
-
-void Beacon::updateGeometry(double heading, double latitude, double longitude) {
+void PositionedAudio::UpdateGeometry(double heading, double latitude, double longitude) {
     // Calculate how far off axis the beacon is given this new heading
 
     // Calculate the beacon heading
@@ -65,7 +70,7 @@ void Beacon::updateGeometry(double heading, double latitude, double longitude) {
         degrees_off_axis += 360;
 
     int dist = (int)distance(latitude, longitude, m_Latitude, m_Longitude);
-    m_BufferGroup.updateGeometry(degrees_off_axis, dist);
+    m_pAudioSource->UpdateGeometry(degrees_off_axis, dist);
 
     //TRACE("%f %f -> %f (%f %f), %dm", heading, beacon_heading, degrees_off_axis, lat_delta, long_delta, dist)
 }

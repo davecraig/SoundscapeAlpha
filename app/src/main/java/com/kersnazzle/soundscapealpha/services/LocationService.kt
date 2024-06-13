@@ -121,7 +121,7 @@ class LocationService : Service() {
         startServiceRunningTicker()
 
         // Start audio engine
-        audioEngine.initialize()
+        audioEngine.initialize(applicationContext)
     }
 
     override fun onDestroy() {
@@ -260,6 +260,7 @@ class LocationService : Service() {
                             "Foreground Service still running.",
                             Toast.LENGTH_SHORT
                         ).show()
+                        audioEngine.createTextToSpeech(0.0, 0.0, "Located speech test")
                     }
                 }
         }
