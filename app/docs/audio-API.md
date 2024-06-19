@@ -123,32 +123,69 @@ classDiagram
     }
     
     class BeaconBufferGroup{
-        BeaconBufferGroup(list std::string& filenames)
-        void createSound(FMOD::Sound **sound)
-        void UpdateGeometry(double degrees_off_axis, double distance)
+        BeaconBufferGroup()
         unsigned int pcmReadCallback(FMOD_SOUND *sound, void *data, unsigned int datalen)
         +vector BeaconBuffer m_BeaconBuffers // Buffers for different headings
         +unsigned int m_CurrentBuffer // Which buffer is currently playing
     }
 
+    class BeaconAudioSource{
+        void UpdateGeometry(double degrees_off_axis, double distance)
+        virtual void CreateSound(FMOD::System *system, FMOD::Sound **sound)
+    }
+
+    class TtsAudioSource{
+        TtsAudioSource(int tts_socket)
+        unsigned int pcmReadCallback(FMOD_SOUND *sound, void *data, unsigned int datalen)
+        +int m_TtsSocket
+    }
+
     class PositionedAudio{
-        PositionedAudio(list std::string& filenames, double latitude, double longitude)
+        PositionedAudio(AudioEngine *engine, double latitude, double longitude)
         UpdateGeometry(double heading, double latitude, double longitude)
-        +BeaconBufferGroup m_BufferGroup
+        virtual void CreateAudioSource()
+        +BeaconAudioSource m_AudioSource
         +double m_Latitude
         +double m_Longitude
+        AudioEngine *m_pEngine
     }
     
+    class AudioEngine {
+        void UpdateGeometry(double listenerLatitude, double listenerLongitude, double listenerHeading);
+        void SetBeaconType(int beaconType);
+        const BeaconDescriptor *GetBeaconDescriptor() const;
+
+        void AddBeacon(PositionedAudio *beacon);
+        void RemoveBeacon(PositionedAudio *beacon);
+
+        +FMOD::System * m_pSystem
+        +std::recursive_mutex m_BeaconsMutex
+        +std::set<PositionedAudio *> m_Beacons
+    }
+
+    class Beacon{
+        void CreateAudioSource()
+    }
+
+    class TextToSpeech{
+        void CreateAudioSource()
+    }
+    PositionedAudio *-- BeaconAudioSource
     BeaconBufferGroup *-- BeaconBuffer
-    PositionedAudio *-- BeaconBufferGroup
+    BeaconAudioSource <-- TtsAudioSource
+    BeaconAudioSource <-- BeaconBufferGroup
+    PositionedAudio <-- Beacon
+    PositionedAudio <-- TextToSpeech
+    AudioEngine *-- PositionedAudio
 ```
 
 The only thing that Kotlin needs to be able to do is create and destroy Beacons. An `AudioEngine` class to wrap this behaviour up with audio initialization and destruction makes sense.
 
 ```
-interface AudioEngine{
-    createBeacon(latitude: Float, longitude: Float)
-    destroyBeacon()
-    UpdateGeometry(float latitude, float longitude, float heading)
+interface AudioEngine {
+    fun createBeacon(latitude: Double, longitude: Double) : Long
+    fun createTextToSpeech(latitude: Double, longitude: Double, text: String) : Long
+    fun updateGeometry(listenerLatitude: Double, listenerLongitude: Double, listenerHeading: Double)
+    fun setBeaconType(beaconType: Int)
 }
 ```

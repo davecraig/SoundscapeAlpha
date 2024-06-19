@@ -23,30 +23,28 @@ PositionedAudio::~PositionedAudio() {
     TRACE("%s %p", __FUNCTION__, this);
     m_pEngine->RemoveBeacon(this);
 
-    auto result = m_pSound->release();
-    ERROR_CHECK(result);
+    if(m_pSound) {
+        auto result = m_pSound->release();
+        ERROR_CHECK(result);
+    }
 
     TRACE("%s %p done", __FUNCTION__, this);
 }
 
-void PositionedAudio::Init()
-{
+void PositionedAudio::InitFmodSound() {
     FMOD_RESULT result;
-
-    CreateAudioSource();
-
-    TRACE("%s %p", __FUNCTION__, this);
 
     m_pAudioSource->CreateSound(m_pSystem, &m_pSound);
 
-    result = m_pSound->set3DMinMaxDistance(10.0f * FMOD_DISTANCE_FACTOR, 5000.0f * FMOD_DISTANCE_FACTOR);
+    result = m_pSound->set3DMinMaxDistance(10.0f * FMOD_DISTANCE_FACTOR,
+                                           5000.0f * FMOD_DISTANCE_FACTOR);
     ERROR_CHECK(result);
 
     result = m_pSound->setMode(FMOD_LOOP_NORMAL);
     ERROR_CHECK(result);
 
     {
-        FMOD_VECTOR pos = {(float)m_Longitude, 0.0f, (float)m_Latitude};
+        FMOD_VECTOR pos = {(float) m_Longitude, 0.0f, (float) m_Latitude};
         FMOD_VECTOR vel = {0.0f, 0.0f, 0.0f};
 
         result = m_pSystem->playSound(m_pSound, 0, false, &m_pChannel);
@@ -55,7 +53,23 @@ void PositionedAudio::Init()
         result = m_pChannel->set3DAttributes(&pos, &vel);
         ERROR_CHECK(result);
     }
-    m_pEngine->AddBeacon(this);
+}
+
+void PositionedAudio::Init()
+{
+    bool queued = CreateAudioSource();
+
+    TRACE("%s %p", __FUNCTION__, this);
+
+    if(!queued)
+        InitFmodSound();
+
+    m_pEngine->AddBeacon(this, queued);
+}
+
+void PositionedAudio::PlayNow()
+{
+    InitFmodSound();
 }
 
 void PositionedAudio::UpdateGeometry(double heading, double latitude, double longitude) {

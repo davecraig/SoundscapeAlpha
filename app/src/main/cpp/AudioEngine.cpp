@@ -80,10 +80,26 @@ namespace soundscape {
 
         //TRACE("heading: %d %f, %f %f", heading, rads, forward.x, forward.z)
         {
+            // Each time through we need to:
+            //
+            // 1. Check for any EOF and delete those Beacons. If the beacon was in the list of
+            //    queued beacons, then we should also start playback of the next queued beacon if
+            //    there is one.
+            // 2. Update the listener location and heading in each active Beacon. This allows
+            //    beacons to switch the audio being played when the listener is pointing away from
+            //    the beacon.
+            //
             std::lock_guard<std::recursive_mutex> guard(m_BeaconsMutex);
             auto it = m_Beacons.begin();
+            bool start_next = false;
             while(it != m_Beacons.end()) {
                 if((*it)->IsEof()) {
+                    if(*m_QueuedBeacons.begin() == *it) {
+                        // The EOF is from the head of the list of queued beacons so start the next one
+                        m_QueuedBeacons.pop_front();
+                        start_next = true;
+                    }
+
                     TRACE("Remove EOF beacon");
                     delete *it;
                     it = m_Beacons.begin();
@@ -92,6 +108,11 @@ namespace soundscape {
 
                 (*it)->UpdateGeometry(listenerHeading, listenerLatitude, listenerLongitude);
                 ++it;
+            }
+            if(start_next && !m_QueuedBeacons.empty())
+            {
+                TRACE("PlayNow on next queued beacon");
+                (*m_QueuedBeacons.begin())->PlayNow();
             }
         }
 
@@ -114,11 +135,20 @@ namespace soundscape {
         return &bd;
     }
 
-    void AudioEngine::AddBeacon(PositionedAudio *beacon)
+    void AudioEngine::AddBeacon(PositionedAudio *beacon, bool queued)
     {
         std::lock_guard<std::recursive_mutex> guard(m_BeaconsMutex);
         m_Beacons.insert(beacon);
-        TRACE("AddBeacon -> %d beacons", m_Beacons.size());
+        TRACE("AddBeacon -> %lu beacons", m_Beacons.size());
+        if(queued)
+        {
+            if(m_QueuedBeacons.empty()) {
+                TRACE("First beacon in queue - PlayNow");
+                beacon->PlayNow();
+            }
+            m_QueuedBeacons.push_back(beacon);
+            TRACE("Queue of %lu", m_QueuedBeacons.size());
+        }
     }
 
     void AudioEngine::RemoveBeacon(PositionedAudio *beacon)
@@ -126,7 +156,7 @@ namespace soundscape {
         std::lock_guard<std::recursive_mutex> guard(m_BeaconsMutex);
         m_Beacons.erase(beacon);
 
-        TRACE("RemoveBeacon -> %d beacons", m_Beacons.size());
+        TRACE("RemoveBeacon -> %lu beacons", m_Beacons.size());
     }
 
 

@@ -260,7 +260,8 @@ class LocationService : Service() {
                             "Foreground Service still running.",
                             Toast.LENGTH_SHORT
                         ).show()
-                        audioEngine.createTextToSpeech(0.0, 0.0, "Located speech test")
+                        audioEngine.createTextToSpeech(-90.0, 0.0, "Located")
+                        audioEngine.createTextToSpeech(90.0, 0.0, "speech test")
                     }
                 }
         }

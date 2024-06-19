@@ -15,12 +15,16 @@ namespace soundscape {
 
         void UpdateGeometry(double heading, double latitude, double longitude);
 
-        virtual void CreateAudioSource() = 0;
+        // CreateAudioSource returns whether or not the audio source should
+        // be placed in the list of queued beacons.
+        virtual bool CreateAudioSource() = 0;
         bool IsEof() { return m_Eof; }
         void Eof() { m_Eof = true; }
+        void PlayNow();
 
     protected:
         void Init();
+        void InitFmodSound();
 
         // We're going to assume that the beacons are close enough that the earth is effectively flat
         double m_Latitude = 0.0;
@@ -44,9 +48,11 @@ namespace soundscape {
         }
 
     protected:
-        void CreateAudioSource()
+        bool CreateAudioSource()
         {
             m_pAudioSource = std::make_unique<BeaconBufferGroup>(m_pEngine, this);
+            // Not queued
+            return false;
         }
     };
 
@@ -60,9 +66,11 @@ namespace soundscape {
         }
 
     protected:
-        void CreateAudioSource()
+        bool CreateAudioSource()
         {
             m_pAudioSource = std::make_unique<TtsAudioSource>(m_pEngine, this, m_TtsSocket);
+            // Text to speech audio are queued to play one after the other
+            return true;
         }
 
         int m_TtsSocket;

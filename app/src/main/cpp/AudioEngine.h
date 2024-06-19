@@ -1,6 +1,7 @@
 #pragma once
 
 #include <set>
+#include <list>
 #include <thread>
 #include <mutex>
 #include "fmod.hpp"
@@ -21,7 +22,7 @@ namespace soundscape {
         void SetBeaconType(int beaconType);
         const BeaconDescriptor *GetBeaconDescriptor() const;
 
-        void AddBeacon(PositionedAudio *beacon);
+        void AddBeacon(PositionedAudio *beacon, bool queued = false);
         void RemoveBeacon(PositionedAudio *beacon);
 
     private:
@@ -30,6 +31,7 @@ namespace soundscape {
 
         std::recursive_mutex m_BeaconsMutex;
         std::set<PositionedAudio *> m_Beacons;
+        std::list<PositionedAudio *> m_QueuedBeacons;
     };
 
 } // soundscape
