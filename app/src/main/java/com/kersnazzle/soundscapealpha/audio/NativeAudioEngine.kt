@@ -1,15 +1,20 @@
 package com.kersnazzle.soundscapealpha.audio
 
 import android.content.Context
+import android.os.Build
 import android.os.Bundle
 import android.os.ParcelFileDescriptor
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import java.util.Locale
+
 
 class NativeAudioEngine : AudioEngine, TextToSpeech.OnInitListener {
     private var engineHandle : Long = 0
     private val engineMutex = Object()
+    private var ttsSockets = HashMap<String, Array<ParcelFileDescriptor>>()
+    private var currentUtteranceId: String? = null
 
     private lateinit var textToSpeech : TextToSpeech
     private lateinit var ttsSocket : ParcelFileDescriptor
@@ -30,6 +35,13 @@ class NativeAudioEngine : AudioEngine, TextToSpeech.OnInitListener {
             }
             destroy(engineHandle)
             engineHandle = 0
+
+            for(ttsSocketPair in ttsSockets){
+                Log.e("TTS", "Close socket pair " + ttsSocketPair.key)
+                ttsSocketPair.value[0].close()
+                ttsSocketPair.value[1].close()
+            }
+
             textToSpeech.shutdown()
         }
     }
@@ -47,6 +59,8 @@ class NativeAudioEngine : AudioEngine, TextToSpeech.OnInitListener {
         override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
 
+            Log.e("Soundscape", "Android version " + Build.VERSION.SDK_INT)
+
             Log.e("TTS", "setLanguage")
             val result = textToSpeech.setLanguage(Locale.UK)
 
@@ -54,6 +68,38 @@ class NativeAudioEngine : AudioEngine, TextToSpeech.OnInitListener {
             if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
                 Log.e("TTS", "The Language not supported!")
             }
+
+            textToSpeech.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+
+                // TODO: Need to test what happens with this code on phones with
+                //  older API.
+
+                override fun onDone(utteranceId: String) {
+                    // TODO: This never seems to be called, why?
+                    Log.e("TTS", "OnDone $utteranceId")
+                }
+
+                override fun onError(utteranceId: String) {
+                    // TODO: Need to test this path and handle it correctly
+                    Log.e("TTS", "OnError $utteranceId")
+                }
+
+                override fun onStart(utteranceId: String) {
+                    Log.e("TTS", "OnStart $utteranceId")
+                    if(currentUtteranceId != null){
+                        Log.e("TTS", "Closing socket pair $currentUtteranceId")
+                        ttsSockets[currentUtteranceId]!![0].closeWithError("Finished")
+                        ttsSockets[currentUtteranceId]!![1].close()
+                        ttsSockets.remove(currentUtteranceId)
+                    }
+                    currentUtteranceId = utteranceId
+                }
+
+                override fun onError(utteranceId: String?, errorCode: Int) {
+                    // TODO: Need to test this path and handle it correctly
+                    Log.e("TTS", "OnError2 $utteranceId")
+                }
+            })
         }
     }
 
@@ -74,14 +120,18 @@ class NativeAudioEngine : AudioEngine, TextToSpeech.OnInitListener {
         synchronized(engineMutex) {
             if(engineHandle != 0L) {
 
-                val tts_socket_pair = ParcelFileDescriptor.createSocketPair()
-                ttsSocket = tts_socket_pair[0]
+                val ttsSocketPair = ParcelFileDescriptor.createReliableSocketPair()
+                ttsSocket = ttsSocketPair[0]
 
                 val params = Bundle()
-                textToSpeech.synthesizeToFile(text, params, ttsSocket, "")
+                params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, ttsSocket.toString())
+                textToSpeech.synthesizeToFile(text, params, ttsSocket, ttsSocket.toString())
+
+                // Store the socket pair in a hashmap indexed by utteranceId
+                ttsSockets[ttsSocket.toString()] = ttsSocketPair
 
                 Log.d(TAG, "Call createNativeTextToSpeech")
-                return createNativeTextToSpeech(engineHandle, latitude, longitude, tts_socket_pair[1].getFd())
+                return createNativeTextToSpeech(engineHandle, latitude, longitude, ttsSocketPair[1].fd)
             }
 
             return 0

@@ -139,7 +139,7 @@ namespace soundscape {
     {
         std::lock_guard<std::recursive_mutex> guard(m_BeaconsMutex);
         m_Beacons.insert(beacon);
-        TRACE("AddBeacon -> %lu beacons", m_Beacons.size());
+        TRACE("AddBeacon -> %u beacons", m_Beacons.size());
         if(queued)
         {
             if(m_QueuedBeacons.empty()) {
@@ -147,7 +147,7 @@ namespace soundscape {
                 beacon->PlayNow();
             }
             m_QueuedBeacons.push_back(beacon);
-            TRACE("Queue of %lu", m_QueuedBeacons.size());
+            TRACE("Queue of %u", m_QueuedBeacons.size());
         }
     }
 
@@ -156,7 +156,7 @@ namespace soundscape {
         std::lock_guard<std::recursive_mutex> guard(m_BeaconsMutex);
         m_Beacons.erase(beacon);
 
-        TRACE("RemoveBeacon -> %lu beacons", m_Beacons.size());
+        TRACE("RemoveBeacon -> %u beacons", m_Beacons.size());
     }
 
 

@@ -67,7 +67,7 @@ namespace soundscape {
 
     private:
         int m_TtsSocket;
-        bool m_MidStream = false;
+        int m_ReadsWithoutData = 0;
     };
 
 }

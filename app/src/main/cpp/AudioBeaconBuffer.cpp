@@ -83,7 +83,7 @@ BeaconBufferGroup::~BeaconBufferGroup()
 
 void BeaconBufferGroup::CreateSound(FMOD::System *system, FMOD::Sound **sound)
 {
-#define BEAT_COUNT 6        // This is taken from the original Soundscape
+#define BEAT_COUNT 6        // TODO: This is taken from the original Soundscape but varies with beacon sound
 
     TRACE("BeaconBufferGroup CreateSound %p", this);
 
@@ -127,13 +127,20 @@ FMOD_RESULT F_CALLBACK BeaconBufferGroup::PcmReadCallback(void *data, unsigned i
 //
 
 TtsAudioSource::TtsAudioSource(const AudioEngine *ae MAYBE_UNUSED, PositionedAudio *parent, int tts_socket)
-              : BeaconAudioSource(parent),
-                m_TtsSocket(tts_socket)
+              : BeaconAudioSource(parent)
+
 {
+    // The file descriptor is owned by the object in Kotlin, so use a duplicate.
+    m_TtsSocket = dup(tts_socket);
+
+    // Set it to non-blocking
+    int flags = fcntl(m_TtsSocket, F_GETFL, 0);
+    fcntl(m_TtsSocket, F_SETFL, flags | O_NONBLOCK);
 }
 
 TtsAudioSource::~TtsAudioSource()
 {
+    close(m_TtsSocket);
 }
 
 void TtsAudioSource::CreateSound(FMOD::System *system, FMOD::Sound **sound)
@@ -162,14 +169,10 @@ void TtsAudioSource::CreateSound(FMOD::System *system, FMOD::Sound **sound)
 }
 FMOD_RESULT F_CALLBACK TtsAudioSource::PcmReadCallback(void *data, unsigned int data_length)
 {
-    // The text to speech data is sent over a socket from Kotlin. When the data ends, it
-    // currently just results in a short packet but no sign of EOF. The current m_MidStream state
-    // is a hack that works on my phone. What's probably required is the Kotlin code to spot the
-    // end of the utterance and close its socket. Until I figure that out, this will do.
-    // Marking the Beacon as EOF means that next time through the system update loop the Sound
-    // will be destroyed.
-    // TODO: Close the socket on the Kotlin end when the speech is fully synthesised and handle
-    //       that here - obviously we need to read all the data that was written prior to the close
+    // The text to speech data is sent over a socket from Kotlin. The socket is closed on the
+    // Kotlin end when the speech has been fully synthesised. However, the onDone appears to be
+    // unreliable and so we also timeout if no data is read after TIMEOUT_READS_WITHOUT_DATA calls.
+#define TIMEOUT_READS_WITHOUT_DATA 10
 
     ssize_t total_bytes_read = 0;
     ssize_t bytes_read;
@@ -180,40 +183,31 @@ FMOD_RESULT F_CALLBACK TtsAudioSource::PcmReadCallback(void *data, unsigned int 
         if(bytes_read == 0) {
             if(total_bytes_read == 0) {
                 TRACE("TTS EOF");
+                m_pParent->Eof();
                 return FMOD_ERR_FILE_EOF;
             }
-            else
-                break;
-        }
-        else if(bytes_read == -1)
             break;
+        }
+        else if(bytes_read == -1) {
+            // No data - socket is non-blocking
+            ++m_ReadsWithoutData;
+            if(m_ReadsWithoutData > TIMEOUT_READS_WITHOUT_DATA) {
+                TRACE("TTS Timed out");
+                m_pParent->Eof();
+                return FMOD_ERR_FILE_EOF;
+            }
+            break;
+        }
+        m_ReadsWithoutData = 0;
 
         write_ptr += bytes_read;
         data_length -= bytes_read;
         total_bytes_read += bytes_read;
-
-        if(m_MidStream && (data_length != 0))
-            break;
     }
 
     //TRACE("TTS callback %zd/%u", total_bytes_read, data_length);
     memset(write_ptr, 0, data_length);
 
-    if(!m_MidStream)
-    {
-        if((bytes_read == total_bytes_read) && (data_length == 0)) {
-            m_MidStream = true;
-            //TRACE("MID STREAM!");
-        }
-    }
-    else
-    {
-        if((bytes_read != total_bytes_read) || (data_length != 0)) {
-            TRACE("Deduced TTS EOF");
-            m_pParent->Eof();
-            return FMOD_ERR_FILE_EOF;
-        }
-    }
     return FMOD_OK;
 }
 
