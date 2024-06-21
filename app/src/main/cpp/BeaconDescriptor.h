@@ -6,14 +6,27 @@
 
 namespace soundscape {
 
-    class BeaconDescriptor {
+    class BeaconAsset {
     public:
-        BeaconDescriptor(const std::vector<std::string> &filenames)
+        BeaconAsset(const std::string &filename, double max_angle)
+        : m_Filename(filename), m_MaxAngle(max_angle)
         {
-            m_Filenames = filenames;
         }
 
-        std::vector<std::string> m_Filenames;
+        double m_MaxAngle;
+        std::string m_Filename;
+    };
+
+    class BeaconDescriptor {
+    public:
+        BeaconDescriptor(unsigned int beats_in_phrase, const std::vector<BeaconAsset> &beacons)
+        : m_BeatsInPhrase(beats_in_phrase),
+          m_Beacons(std::move(beacons))
+        {
+        }
+
+        unsigned int m_BeatsInPhrase;
+        const std::vector<BeaconAsset> m_Beacons;
     };
 
 } // soundscape

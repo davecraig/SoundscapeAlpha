@@ -14,7 +14,9 @@
 
 using namespace soundscape;
 
-BeaconBuffer::BeaconBuffer(FMOD::System *system, const std::string &filename)
+BeaconBuffer::BeaconBuffer(FMOD::System *system, const std::string &filename, double max_angle)
+            : m_MaxAngle(max_angle),
+              m_Name(filename)
 {
         FMOD::Sound* sound;
 
@@ -24,10 +26,10 @@ BeaconBuffer::BeaconBuffer(FMOD::System *system, const std::string &filename)
         result = sound->getLength(&m_BufferSize, FMOD_TIMEUNIT_RAWBYTES);
         ERROR_CHECK(result);
 
-        m_pBuffer = (unsigned char *)malloc(m_BufferSize);
+        m_pBuffer = std::make_unique<unsigned char[]>(m_BufferSize);
 
         unsigned int bytes_read;
-        result = sound->readData(m_pBuffer, m_BufferSize, &bytes_read);
+        result = sound->readData(m_pBuffer.get(), m_BufferSize, &bytes_read);
         ERROR_CHECK(result);
 
         result = sound->release();
@@ -35,8 +37,15 @@ BeaconBuffer::BeaconBuffer(FMOD::System *system, const std::string &filename)
 }
 
 BeaconBuffer::~BeaconBuffer() {
-    free(m_pBuffer);
     TRACE("~BeaconBuffer");
+}
+
+bool BeaconBuffer::CheckIsActive(double degrees_off_axis)
+{
+    if(fabs(degrees_off_axis) <= m_MaxAngle)
+        return true;
+
+    return false;
 }
 
 unsigned int BeaconBuffer::Read(void *data, unsigned int data_length, unsigned long pos) {
@@ -47,9 +56,9 @@ unsigned int BeaconBuffer::Read(void *data, unsigned int data_length, unsigned l
         remainder = data_length - (m_BufferSize - pos);
         data_length = m_BufferSize - pos;
     }
-    memcpy(dest, m_pBuffer + pos, data_length);
+    memcpy(dest, m_pBuffer.get() + pos, data_length);
     if(remainder)
-        memcpy(dest + data_length, m_pBuffer + pos + data_length, remainder);
+        memcpy(dest + data_length, m_pBuffer.get() + pos + data_length, remainder);
 
     return data_length;
 }
@@ -61,24 +70,20 @@ BeaconBufferGroup::BeaconBufferGroup(const AudioEngine *ae, PositionedAudio *par
 : BeaconAudioSource(parent)
 {
     TRACE("Create BeaconBufferGroup %p", this);
+    m_pDescription = ae->GetBeaconDescriptor();
 
-    auto bd = ae->GetBeaconDescriptor();
-
-    int index = 0;
     auto system = ae->GetFmodSystem();
-    for(const auto &filename: bd->m_Filenames) {
-        m_pBuffers[index] = new BeaconBuffer(system, filename);
-        ++index;
+    for(const auto &asset: m_pDescription->m_Beacons) {
+        auto buffer = std::make_unique<BeaconBuffer>(system,
+                                                                  asset.m_Filename,
+                                                                 asset.m_MaxAngle);
+        m_pBuffers.push_back(std::move(buffer));
     }
-    m_CurrentBuffer = 0;
 }
 
 BeaconBufferGroup::~BeaconBufferGroup()
 {
     TRACE("~BeaconBufferGroup %p", this);
-    delete m_pBuffers[0];
-    delete m_pBuffers[1];
-    TRACE("~BeaconBufferGroup done");
 }
 
 void BeaconBufferGroup::CreateSound(FMOD::System *system, FMOD::Sound **sound)
@@ -107,15 +112,22 @@ void BeaconBufferGroup::CreateSound(FMOD::System *system, FMOD::Sound **sound)
     ERROR_CHECK(result);
 }
 
+void BeaconBufferGroup::UpdateCurrentBufferFromHeading()
+{
+    for(const auto &buffer: m_pBuffers)
+    {
+        if(buffer->CheckIsActive(degreesOffAxis)) {
+            m_pCurrentBuffer = buffer.get();
+            break;
+        }
+    }
+}
+
 FMOD_RESULT F_CALLBACK BeaconBufferGroup::PcmReadCallback(void *data, unsigned int data_length)
 {
-    // TODO: Initial switch between sounds based on beacon relative heading
-    if((degreesOffAxis > 90) || (degreesOffAxis < -90))
-        m_CurrentBuffer = 1;
-    else
-        m_CurrentBuffer = 0;
+    UpdateCurrentBufferFromHeading();
 
-    unsigned int bytes_read = m_pBuffers[m_CurrentBuffer]->Read(data, data_length, m_BytePos);
+    unsigned int bytes_read = m_pCurrentBuffer->Read(data, data_length, m_BytePos);
     m_BytePos += bytes_read;
     //TRACE("BBG callback %d: %u @ %lu", m_CurrentBuffer, bytes_read, m_BytePos);
 

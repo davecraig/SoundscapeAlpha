@@ -6,22 +6,29 @@
 #include <atomic>
 
 #include "AudioEngine.h"
+#include "BeaconDescriptor.h"
 
 namespace soundscape {
 
     class BeaconBuffer {
     public:
-        BeaconBuffer(FMOD::System *system, const std::string &filename);
+        BeaconBuffer(FMOD::System *system,
+                     const std::string &filename,
+                     double max_angle);
 
         virtual ~BeaconBuffer();
 
         unsigned int Read(void *data, unsigned int data_length, unsigned long pos);
 
         unsigned int GetBufferSize() { return m_BufferSize; }
+        bool CheckIsActive(double degrees_off_axis);
 
     private:
+        double m_MaxAngle;
+        std::string m_Name;
+
         unsigned int m_BufferSize = 0;
-        unsigned char *m_pBuffer = nullptr;
+        std::unique_ptr<unsigned char[]> m_pBuffer;
     };
 
     class BeaconAudioSource {
@@ -52,8 +59,11 @@ namespace soundscape {
         virtual FMOD_RESULT F_CALLBACK PcmReadCallback(void *data, unsigned int data_length);
 
     private:
-        BeaconBuffer *m_pBuffers[2];
-        int m_CurrentBuffer = -1;
+        void UpdateCurrentBufferFromHeading();
+
+        const BeaconDescriptor *m_pDescription;
+        std::vector< std::unique_ptr<BeaconBuffer> > m_pBuffers;
+        BeaconBuffer * m_pCurrentBuffer = nullptr;
         unsigned long m_BytePos = 0;
     };
 

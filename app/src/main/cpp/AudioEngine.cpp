@@ -11,6 +11,18 @@
 
 namespace soundscape {
 
+#if 0
+    static FMOD_RESULT F_CALLBACK LoggingCallback(FMOD_DEBUG_FLAGS flags,
+                                                  const char *file,
+                                                  int line,
+                                                  const char *func,
+                                                  const char *message)
+    {
+        TRACE("%d of %s: %s", line, file, message);
+        return FMOD_OK;
+    }
+#endif
+
     AudioEngine::AudioEngine() noexcept {
         FMOD_RESULT result;
 
@@ -29,6 +41,29 @@ namespace soundscape {
 
         result = m_pSystem->set3DSettings(1.0, FMOD_DISTANCE_FACTOR, 1.0f);
         ERROR_CHECK(result);
+#if 0
+        int numdrivers = 0;
+        result = m_pSystem->getNumDrivers(&numdrivers);
+        ERROR_CHECK(result);
+        for(int id = 0; id < numdrivers; ++id) {
+            char name[256];
+            FMOD_GUID guid;
+            int systemrate;
+            FMOD_SPEAKERMODE speakermode;
+            int speakermodechannels;
+
+            result = m_pSystem->getDriverInfo(id,
+                    name,
+                    sizeof(name),
+                    &guid,
+                    &systemrate,
+                    &speakermode,
+                    &speakermodechannels);
+            ERROR_CHECK(result);
+
+            TRACE("Audio driver: %s  %d %d %d", name, systemrate, speakermode, speakermodechannels);
+        }
+#endif
     }
 
     AudioEngine::~AudioEngine() {
@@ -130,9 +165,35 @@ namespace soundscape {
 
     const BeaconDescriptor *AudioEngine::GetBeaconDescriptor() const
     {
-        const static BeaconDescriptor bd({ "file:///android_asset/tactile_on_axis.wav", "file:///android_asset/tactile_behind.wav" });
-
-        return &bd;
+        const static BeaconDescriptor bd[] =
+                {
+                        {
+                                6,
+                                {
+                                        {"file:///android_asset/Tactile/Tactile_OnAxis.wav", 15.0},
+                                        {"file:///an:wqdroid_asset/Tactile/Tactile_OffAxis.wav", 125.0},
+                                        {"file:///android_asset/Tactile/Tactile_Behind.wav", 180.0}
+                                }
+                        },
+                        {
+                                6,
+                                {
+                                        {"file:///android_asset/Flare/Flare_A.wav", 15.0},
+                                        {"file:///android_asset/Flare/Flare_A+.wav", 55.0},
+                                        {"file:///android_asset/Flare/Flare_B.wav", 125.0},
+                                        {"file:///android_asset/Flare/Flare_Behind.wav", 180.0}
+                                }
+                        },
+                        {
+                                2,
+                                {
+                                        {"file:///android_asset/Classic/Classic_OffAxis.wav", 22.5},
+                                        {"file:///android_asset/Classic/Classic_OnAxis.wav", 180.0},
+                                }
+                        },
+                };
+        // TODO: Allow selection of current beacon asset which would switch which index is returned
+        return &bd[0];
     }
 
     void AudioEngine::AddBeacon(PositionedAudio *beacon, bool queued)
