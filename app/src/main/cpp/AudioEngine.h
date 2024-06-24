@@ -29,6 +29,9 @@ namespace soundscape {
         FMOD::System * m_pSystem;
         FMOD_VECTOR m_LastPos = {0.0f, 0.0f, 0.0f};
 
+        const static BeaconDescriptor msc_BeaconDescriptors[];
+        std::atomic<int> m_BeaconTypeIndex;
+
         std::recursive_mutex m_BeaconsMutex;
         std::set<PositionedAudio *> m_Beacons;
         std::list<PositionedAudio *> m_QueuedBeacons;

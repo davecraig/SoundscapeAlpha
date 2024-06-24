@@ -11,6 +11,121 @@
 
 namespace soundscape {
 
+const BeaconDescriptor AudioEngine::msc_BeaconDescriptors[] =
+{
+        {
+                2,
+                {
+                        {"file:///android_asset/Classic/Classic_OnAxis.wav", 22.5},
+                        {"file:///android_asset/Classic/Classic_OffAxis.wav", 180.0},
+                }
+        },
+        {
+                6,
+                {
+                        {"file:///android_asset/New/Current_A+.wav", 15.0},
+                        {"file:///android_asset/New/Current_A.wav", 55.0},
+                        {"file:///android_asset/New/Current_B.wav", 125.0},
+                        {"file:///android_asset/New/Current_Behind.wav", 180.0},
+                }
+        },
+        {
+                6,
+                {
+                        {"file:///android_asset/Tactile/Tactile_OnAxis.wav", 15.0},
+                        {"file:///android_asset/Tactile/Tactile_OffAxis.wav", 125.0},
+                        {"file:///android_asset/Tactile/Tactile_Behind.wav", 180.0}
+                }
+        },
+        {
+                6,
+                {
+                        {"file:///android_asset/Flare/Flare_A+.wav", 15.0},
+                        {"file:///android_asset/Flare/Flare_A.wav", 55.0},
+                        {"file:///android_asset/Flare/Flare_B.wav", 125.0},
+                        {"file:///android_asset/Flare/Flare_Behind.wav", 180.0}
+                }
+        },
+        {
+                6,
+                {
+                        {"file:///android_asset/Shimmer/Shimmer_A+.wav", 15.0},
+                        {"file:///android_asset/Shimmer/Shimmer_A.wav", 55.0},
+                        {"file:///android_asset/Shimmer/Shimmer_B.wav", 125.0},
+                        {"file:///android_asset/Shimmer/Shimmer_Behind.wav", 180.0}
+                }
+        },
+        {
+                6,
+                {
+                        {"file:///android_asset/Ping/Ping_A+.wav", 15.0},
+                        {"file:///android_asset/Ping/Ping_A.wav", 55.0},
+                        {"file:///android_asset/Ping/Ping_B.wav", 125.0},
+                        {"file:///android_asset/Tactile/Tactile_Behind.wav", 180.0}
+                }
+        },
+        {
+                6,
+                {
+                        {"file:///android_asset/Drop/Drop_A+.wav", 15.0},
+                        {"file:///android_asset/Drop/Drop_A.wav", 55.0},
+                        {"file:///android_asset/Drop/Drop_Behind.wav", 180.0}
+                }
+        },
+        {
+                6,
+                {
+                        {"file:///android_asset/Signal/Signal_A+.wav", 15.0},
+                        {"file:///android_asset/Signal/Signal_A.wav", 55.0},
+                        {"file:///android_asset/Drop/Drop_Behind.wav", 180.0}
+                }
+        },
+        {
+                12,
+                {
+                        {"file:///android_asset/Signal Slow/Signal_Slow_A+.wav", 15.0},
+                        {"file:///android_asset/Signal Slow/Signal_Slow_A.wav", 55.0},
+                        {"file:///android_asset/Signal Slow/Signal_Slow_Behind.wav", 180.0}
+                }
+        },
+        {
+                18,
+                {
+                        {"file:///android_asset/Signal Very Slow/Signal_Very_Slow_A+.wav",
+                                15.0},
+                        {"file:///android_asset/Signal Very Slow/Signal_Very_Slow_A.wav",
+                                55.0},
+                        {"file:///android_asset/Signal Very Slow/Signal_Very_Slow_Behind.wav",
+                                180.0
+                        }
+                },
+        },
+        {
+                6,
+                {
+                        {"file:///android_asset/Mallet/Mallet_A+.wav", 15.0},
+                        {"file:///android_asset/Mallet/Mallet_A.wav", 55.0},
+                        {"file:///android_asset/Mallet/Mallet_Behind.wav", 180.0}
+                }
+        },
+        {
+                12,
+                {
+                        {"file:///android_asset/Mallet Slow/Mallet_Slow_A+.wav", 15.0},
+                        {"file:///android_asset/Mallet Slow/Mallet_Slow_A.wav", 55.0},
+                        {"file:///android_asset/Mallet Slow/Mallet_Slow_Behind.wav", 180.0}
+                }
+        },
+        {
+                18,
+                {
+                        {"file:///android_asset/Mallet Very Slow/Mallet_Very_Slow_A+.wav", 15.0},
+                        {"file:///android_asset/Mallet Very Slow/Mallet_Very_Slow_A.wav", 55.0},
+                        {"file:///android_asset/Mallet Very Slow/Mallet_Very_Slow_Behind.wav", 180.0}
+                }
+        }
+};
+
 #if 0
     static FMOD_RESULT F_CALLBACK LoggingCallback(FMOD_DEBUG_FLAGS flags,
                                                   const char *file,
@@ -27,6 +142,8 @@ namespace soundscape {
         FMOD_RESULT result;
 
         TRACE("%s %p", __FUNCTION__, this);
+
+        m_BeaconTypeIndex = 0;
 
         // Create a System object and initialize
         FMOD::System *system;
@@ -160,40 +277,20 @@ namespace soundscape {
 
     void AudioEngine::SetBeaconType(int beaconType)
     {
-        TRACE("BeaconType: %d", beaconType);
+        if(beaconType < (sizeof(msc_BeaconDescriptors)/sizeof(BeaconDescriptor))) {
+            m_BeaconTypeIndex = beaconType;
+
+            // TODO: This call only has any effect when made prior to Beacon creation. Any Beacons
+            //  which are already sounding will not currently be affected. To support this we need
+            //  to reinitialize Beacons with the new beacon type.
+            return;
+        }
+        TRACE("BeaconType failed, invalid type: %d", beaconType);
     }
 
     const BeaconDescriptor *AudioEngine::GetBeaconDescriptor() const
     {
-        const static BeaconDescriptor bd[] =
-                {
-                        {
-                                6,
-                                {
-                                        {"file:///android_asset/Tactile/Tactile_OnAxis.wav", 15.0},
-                                        {"file:///an:wqdroid_asset/Tactile/Tactile_OffAxis.wav", 125.0},
-                                        {"file:///android_asset/Tactile/Tactile_Behind.wav", 180.0}
-                                }
-                        },
-                        {
-                                6,
-                                {
-                                        {"file:///android_asset/Flare/Flare_A.wav", 15.0},
-                                        {"file:///android_asset/Flare/Flare_A+.wav", 55.0},
-                                        {"file:///android_asset/Flare/Flare_B.wav", 125.0},
-                                        {"file:///android_asset/Flare/Flare_Behind.wav", 180.0}
-                                }
-                        },
-                        {
-                                2,
-                                {
-                                        {"file:///android_asset/Classic/Classic_OffAxis.wav", 22.5},
-                                        {"file:///android_asset/Classic/Classic_OnAxis.wav", 180.0},
-                                }
-                        },
-                };
-        // TODO: Allow selection of current beacon asset which would switch which index is returned
-        return &bd[0];
+        return &msc_BeaconDescriptors[m_BeaconTypeIndex];
     }
 
     void AudioEngine::AddBeacon(PositionedAudio *beacon, bool queued)
