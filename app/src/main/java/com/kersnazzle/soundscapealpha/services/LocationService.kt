@@ -1,6 +1,7 @@
 package com.kersnazzle.soundscapealpha.services
 
 import android.annotation.SuppressLint
+import android.app.Application
 import android.app.Service
 import android.app.Notification
 import android.app.NotificationChannel
@@ -33,9 +34,17 @@ import com.kersnazzle.soundscapealpha.audio.NativeAudioEngine
 import com.kersnazzle.soundscapealpha.geojsonparser.geojson.LngLatAlt
 import com.kersnazzle.soundscapealpha.utils.*
 
+import com.kersnazzle.soundscapealpha.network.ITileDAO
+import com.kersnazzle.soundscapealpha.network.OkhttpClientInstance
+
+import com.kersnazzle.soundscapealpha.network.RetrofitClientInstance
+import com.kersnazzle.soundscapealpha.utils.cleanTileGeoJSON
+import com.kersnazzle.soundscapealpha.utils.getXYTile
+
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,6 +53,8 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import retrofit2.awaitResponse
+import retrofit2.create
 import java.util.concurrent.Executors
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -60,7 +71,6 @@ class LocationService : Service() {
     private lateinit var locationCallback: LocationCallback
 
     // core Orientation service - test
-
     private lateinit var fusedOrientationProviderClient: FusedOrientationProviderClient
     private lateinit var listener: DeviceOrientationListener
 
@@ -75,15 +85,13 @@ class LocationService : Service() {
     private val _locationFlow = MutableStateFlow<Location?>(null)
     var locationFlow: StateFlow<Location?> = _locationFlow
 
-    // Flow to return Orientation objects... not orientation objects so what are they?
-    // Doesn't seem to have an Orientation object like the FusedLocationProvider so will
-    // just pass the Azimuth (Double?) at the moment until I figure out what is going on
-    // DeviceOrientation apparently
+    // Flow to return DeviceOrientation objects
     private val _orientationFlow = MutableStateFlow<DeviceOrientation?>(null)
     var orientationFlow: StateFlow<DeviceOrientation?> = _orientationFlow
 
+
+
     // Binder to allow local clients to Bind to our service
-    // Need to check that this stops another naughty app hooking into our Location Service?
     inner class LocalBinder : Binder() {
         fun getService(): LocationService = this@LocationService
     }
@@ -284,7 +292,7 @@ class LocationService : Service() {
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(getString(R.string.notification_text))
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setOngoing(true)
 
         return builder.build()
@@ -298,6 +306,45 @@ class LocationService : Service() {
             NotificationManager.IMPORTANCE_DEFAULT
         )
         notificationManager.createNotificationChannel(channel)
+    }
+
+    // testing out basic network connection with Retrofit and cleaning the tile
+    suspend fun getTileString(): String? {
+
+        val tileXY = _locationFlow.value?.let { getXYTile(it.latitude, _locationFlow.value!!.longitude) }
+
+        return withContext(Dispatchers.IO) {
+            val service = RetrofitClientInstance.retrofitInstance?.create(ITileDAO::class.java)
+
+            val tile = async { tileXY?.let { service?.getTile(it.first, tileXY.second) } }
+            val result = tile.await()?.awaitResponse()?.body()
+            return@withContext result?.let<String, String> {
+                tileXY?.let { it1 ->
+                    cleanTileGeoJSON(
+                        it1.first, tileXY.second, 16.0, it)
+                }.toString()
+            }
+        }
+    }
+
+    suspend fun getTileStringCaching(application: Application): String? {
+        val tileXY = _locationFlow.value?.let { getXYTile(it.latitude, _locationFlow.value!!.longitude) }
+
+        val okhttpClientInstance = OkhttpClientInstance(application)
+        return withContext(Dispatchers.IO) {
+
+            val service = okhttpClientInstance.retrofitInstance?.create(ITileDAO::class.java)
+            val tile = async { tileXY?.let { service?.getTileWithCache(it.first, tileXY.second) } }
+            val result = tile.await()?.awaitResponse()?.body()
+            return@withContext result?.let<String, String> {
+                tileXY?.let { it1 ->
+                    cleanTileGeoJSON(
+                        it1.first, tileXY.second, 16.0, it)
+                }.toString()
+            }
+
+        }
+
     }
 
     companion object {
