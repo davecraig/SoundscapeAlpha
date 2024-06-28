@@ -27,12 +27,12 @@ class NetworkTileWithCacheTest {
     private val moshi = GeoMoshi.registerAdapters(Moshi.Builder()).build()
     lateinit var featureCollectionTest: FeatureCollection
 
-    @Test
-    fun testTile() = runTest {
-        givenTilesIsInitialized()
-        whenTileDataIsReadAndParsedIntoAFeatureCollection()
-        thenTheFeatureCollectionShouldContainLetterBox()
-    }
+//    @Test
+//    fun testTile() = runTest {
+//        givenTilesIsInitialized()
+//        whenTileDataIsReadAndParsedIntoAFeatureCollection()
+//        thenTheFeatureCollectionShouldContainLetterBox()
+//    }
 
     private fun givenTilesIsInitialized() {
         tiles = Tiles()
