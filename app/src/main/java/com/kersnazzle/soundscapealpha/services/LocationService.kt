@@ -1,23 +1,26 @@
 package com.kersnazzle.soundscapealpha.services
 
+
+import android.Manifest.permission
 import android.annotation.SuppressLint
 import android.app.Application
-import android.app.Service
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.Service
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.location.Location
-
-
 import android.os.Binder
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
 import android.widget.Toast
+import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
+import androidx.core.content.ContextCompat
 import com.google.android.gms.location.DeviceOrientation
 import com.google.android.gms.location.DeviceOrientationListener
 import com.google.android.gms.location.DeviceOrientationRequest
@@ -29,18 +32,13 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.OnCompleteListener
 import com.kersnazzle.soundscapealpha.R
 import com.kersnazzle.soundscapealpha.audio.NativeAudioEngine
-import com.kersnazzle.soundscapealpha.geojsonparser.geojson.LngLatAlt
-import com.kersnazzle.soundscapealpha.utils.*
-
 import com.kersnazzle.soundscapealpha.network.ITileDAO
 import com.kersnazzle.soundscapealpha.network.OkhttpClientInstance
-
 import com.kersnazzle.soundscapealpha.network.RetrofitClientInstance
-import com.kersnazzle.soundscapealpha.utils.cleanTileGeoJSON
-import com.kersnazzle.soundscapealpha.utils.getXYTile
-
+import com.kersnazzle.soundscapealpha.utils.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -54,10 +52,10 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import retrofit2.awaitResponse
-import retrofit2.create
 import java.util.concurrent.Executors
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+
 
 /**
  * Simple foreground service that shows a notification to the user and provides location updates.
@@ -178,16 +176,26 @@ class LocationService : Service() {
      * To start the location updates, call [startLocationUpdates].
      */
     private fun setupLocationUpdates() {
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-        fusedLocationClient.lastLocation
-            .addOnSuccessListener { location: Location? ->
-                // Handle the retrieved location here
-                if (location != null) {
-                    _locationFlow.value = location
-                }
+        if (ContextCompat.checkSelfPermission(
+                this.applicationContext, permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            if (ContextCompat.checkSelfPermission(
+                    this.applicationContext, permission.ACCESS_COARSE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
+            ) {
+                fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+                fusedLocationClient.lastLocation
+                    .addOnSuccessListener { location: Location? ->
+                        // Handle the retrieved location here
+                        if (location != null) {
+                            _locationFlow.value = location
+                        }
+                    }
+                    .addOnFailureListener { exception: Exception ->
+                    }
             }
-            .addOnFailureListener { exception: Exception ->
-            }
+        }
 
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult) {
