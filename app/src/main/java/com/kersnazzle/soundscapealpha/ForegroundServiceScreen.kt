@@ -189,7 +189,7 @@ private fun LocationUpdate(
         )
         Text(
             text = beacon
-                ?: stringResource(id = R.string.foreground_service_sample_last_location_fetching)
+                ?: stringResource(id = R.string.foreground_service_no_beacon_set)
         )
         Text(
             text = orientation
