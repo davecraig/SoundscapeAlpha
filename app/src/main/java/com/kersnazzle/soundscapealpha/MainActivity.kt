@@ -1,31 +1,30 @@
 package com.kersnazzle.soundscapealpha
 
-import android.os.Bundle
-import android.util.Log
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
 import android.location.Location
+import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.os.IBinder
+import android.util.Log
 import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-
 import com.kersnazzle.soundscapealpha.services.LocationService
-import com.kersnazzle.soundscapealpha.utils.getXYTile
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+
 
 class MainActivity : ComponentActivity() {
     // GeoJSON Tile data direct from backend
@@ -37,11 +36,13 @@ class MainActivity : ComponentActivity() {
     private var displayableLocation by mutableStateOf<String?>(null)
     private var displayableOrientation by mutableStateOf<String?>(null)
     private var displayableTileString by mutableStateOf<String?>(null)
+    private var displayableBeacon by mutableStateOf<String?>(null)
 
     private var location by mutableStateOf<Location?>(null)
     private var tileXY by mutableStateOf<Pair<Int, Int>?>(null)
 
-
+    private var intentLatitude: Double = 0.0
+    private var intentLongitude: Double = 0.0
 
     // needed to communicate with the service.
     private val connection = object : ServiceConnection {
@@ -96,12 +97,37 @@ class MainActivity : ComponentActivity() {
 
         super.onCreate(savedInstanceState)
 
+        val data: Uri? = intent?.data
+
+        // Figure out what to do based on the intent type
+        if(intent != null) {
+            Log.e("intent", intent.data.toString())
+            if(intent.data != null) {
+                val regex = Regex("geo:([-+]?[0-9]*\\.[0-9]+|[0-9]+),([-+]?[0-9]*\\.[0-9]+|[0-9]+).*")
+                val matchResult = regex.find(intent.data.toString())
+                if (matchResult != null) {
+                    val latitude = matchResult.groupValues[1]
+                    val longitude = matchResult.groupValues[2]
+
+                    Log.e("intent","latitude: $latitude")
+                    Log.e("intent","longitude: $longitude")
+
+                    // We have a geo intent with a GPS position. Set a beacon at that point
+                    intentLatitude = latitude.toDouble()
+                    intentLongitude = longitude.toDouble()
+
+                    displayableBeacon = "Beacon: $latitude, $longitude"
+                }
+            }
+        }
+
         org.fmod.FMOD.init(applicationContext)
 
         setContent {
             ForegroundServiceScreen(
                 serviceRunning = serviceBoundState,
                 currentLocation = displayableLocation,
+                beaconLocation = displayableBeacon,
                 currentOrientation = displayableOrientation,
                 tileString = displayableTileString,
                 location = location,
@@ -111,6 +137,14 @@ class MainActivity : ComponentActivity() {
 
         checkAndRequestNotificationPermission()
 
+        locationPermissionRequest.launch(
+            arrayOf(
+                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                android.Manifest.permission.ACCESS_COARSE_LOCATION,
+                android.Manifest.permission.ACCESS_BACKGROUND_LOCATION,
+                android.Manifest.permission.POST_NOTIFICATIONS
+            )
+        )
         tryToBindToServiceIfRunning()
     }
     override fun onDestroy() {
@@ -118,6 +152,7 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
         org.fmod.FMOD.close()
 
+        exampleService?.stopForegroundService()
         unbindService(connection)
     }
 
@@ -154,6 +189,7 @@ class MainActivity : ComponentActivity() {
         } else {
             // service is already running, stop it
             exampleService?.stopForegroundService()
+            exampleService = null
         }
     }
 
@@ -178,11 +214,14 @@ class MainActivity : ComponentActivity() {
 
     private fun onServiceConnected() {
 
+        if(intentLatitude != 0.0 && intentLongitude != 0.0)
+            exampleService?.createBeacon(intentLatitude, intentLongitude);
+
         lifecycleScope.launch {
             // observe location updates from the service
             exampleService?.locationFlow?.map {
                 it?.let { location ->
-                    "Latitude: ${location.latitude}, Longitude: ${location.longitude} Accuracy: ${location.accuracy}"
+                    "${location.latitude}, ${location.longitude} (${location.accuracy})"
                 }
             }?.collectLatest {
                 displayableLocation = it

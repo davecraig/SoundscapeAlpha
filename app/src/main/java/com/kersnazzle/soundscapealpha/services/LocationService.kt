@@ -126,7 +126,7 @@ class LocationService : Service() {
         startOrientationUpdates()
 
         // Start secondary service
-        startServiceRunningTicker()
+        //startServiceRunningTicker()
 
         // Start audio engine
         audioEngine.initialize(applicationContext)
@@ -179,6 +179,16 @@ class LocationService : Service() {
      */
     private fun setupLocationUpdates() {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        fusedLocationClient.lastLocation
+            .addOnSuccessListener { location: Location? ->
+                // Handle the retrieved location here
+                if (location != null) {
+                    _locationFlow.value = location
+                }
+            }
+            .addOnFailureListener { exception: Exception ->
+            }
+
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult) {
                 for (location in locationResult.locations) {
@@ -202,13 +212,6 @@ class LocationService : Service() {
             _orientationFlow.value = orientation  // Emit the DeviceOrientation object
             val location = locationFlow.value
             if(location != null) {
-                if(!audioBeaconCreated) {
-                    audioBeaconCreated = true
-
-                    // Create test beacon near here
-                    val beaconLocation = getDestinationCoordinate(LngLatAlt(location.longitude, location.latitude), 45.0, 100.0)
-                    audioBeacon = audioEngine.createBeacon(beaconLocation.latitude, beaconLocation.longitude)
-                }
                 audioEngine.updateGeometry(
                     location.latitude,
                     location.longitude,
@@ -223,8 +226,6 @@ class LocationService : Service() {
         // Not clear on what the difference is...
         val executor = Executors.newSingleThreadExecutor()
         fusedOrientationProviderClient.requestOrientationUpdates(request, executor, listener)
-
-
     }
 
 
@@ -235,11 +236,6 @@ class LocationService : Service() {
      */
     @SuppressLint("MissingPermission")
     private fun startLocationUpdates() {
-        /*fusedLocationClient.requestLocationUpdates(
-            LocationRequest.Builder(
-                LOCATION_UPDATES_INTERVAL_MS
-            ).build(), locationCallback, Looper.getMainLooper()
-        )*/
         fusedLocationClient.requestLocationUpdates(
             LocationRequest.Builder(
                 Priority.PRIORITY_HIGH_ACCURACY,
@@ -268,8 +264,8 @@ class LocationService : Service() {
                             "Foreground Service still running.",
                             Toast.LENGTH_SHORT
                         ).show()
-                        audioEngine.createTextToSpeech(-90.0, 0.0, "Located")
-                        audioEngine.createTextToSpeech(90.0, 0.0, "speech test")
+                        //audioEngine.createTextToSpeech(-90.0, 0.0, "Located")
+                        //audioEngine.createTextToSpeech(90.0, 0.0, "speech test")
                     }
                 }
         }
@@ -345,6 +341,14 @@ class LocationService : Service() {
 
         }
 
+    }
+
+    fun createBeacon(latitude: Double, longitude: Double) {
+        if(!audioBeaconCreated) {
+            audioBeaconCreated = true
+
+            audioBeacon = audioEngine.createBeacon(latitude, longitude)
+        }
     }
 
     companion object {

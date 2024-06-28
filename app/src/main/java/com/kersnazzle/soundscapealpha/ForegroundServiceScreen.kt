@@ -32,6 +32,7 @@ internal fun ForegroundServiceScreen(
     serviceRunning: Boolean,
     currentLocation: String?,
     currentOrientation: String?,
+    beaconLocation: String?,
     tileString: String?,
     location: Location?,
     onClick: () -> Unit,
@@ -48,6 +49,7 @@ internal fun ForegroundServiceScreen(
                 currentLocation = currentLocation,
                 currentOrientation = currentOrientation,
                 location = location,
+                beaconLocation = beaconLocation,
                 onClick = onClick,
                 modifier = modifier
             )
@@ -60,6 +62,7 @@ private fun ForegroundServiceSampleScreenContent(
     serviceRunning: Boolean,
     currentLocation: String?,
     currentOrientation: String?,
+    beaconLocation: String?,
     location: Location?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -72,13 +75,6 @@ private fun ForegroundServiceSampleScreenContent(
             .fillMaxSize()
             .padding(32.dp)
     ) {
-        Text(
-            text = stringResource(id = R.string.foreground_service_sample_description),
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
@@ -109,6 +105,7 @@ private fun ForegroundServiceSampleScreenContent(
                 LocationUpdate(
                     visible = serviceRunning,
                     location = currentLocation,
+                    beacon = beaconLocation,
                     orientation = currentOrientation
                 )
             }
@@ -175,7 +172,8 @@ private fun ServiceStatusRow(
 private fun LocationUpdate(
     visible: Boolean,
     location: String?,
-    orientation: String?
+    orientation: String?,
+    beacon: String?
 ) {
     if (visible) {
         Spacer(modifier = Modifier.height(32.dp))
@@ -187,6 +185,10 @@ private fun LocationUpdate(
 
         Text(
             text = location
+                ?: stringResource(id = R.string.foreground_service_sample_last_location_fetching)
+        )
+        Text(
+            text = beacon
                 ?: stringResource(id = R.string.foreground_service_sample_last_location_fetching)
         )
         Text(
