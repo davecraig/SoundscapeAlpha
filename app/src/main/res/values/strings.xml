@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">SoundscapeAlpha</string>
+    <string name="app_name">Soundscape</string>
     <string name="notification_text">We are running this location service in the foreground</string>
 
     <string name="foreground_service_sample_notification_channel_general_name">General notification</string>

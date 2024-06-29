@@ -323,7 +323,7 @@ const BeaconDescriptor AudioEngine::msc_BeaconDescriptors[] =
 
 extern "C"
 JNIEXPORT jlong JNICALL
-Java_com_kersnazzle_soundscapealpha_audio_NativeAudioEngine_create__(JNIEnv *env MAYBE_UNUSED, jobject thiz MAYBE_UNUSED) {
+Java_com_scottishtecharmy_soundscape_audio_NativeAudioEngine_create__(JNIEnv *env MAYBE_UNUSED, jobject thiz MAYBE_UNUSED) {
     auto ae = std::make_unique<soundscape::AudioEngine>();
 
     if (not ae) {
@@ -336,7 +336,7 @@ Java_com_kersnazzle_soundscapealpha_audio_NativeAudioEngine_create__(JNIEnv *env
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_kersnazzle_soundscapealpha_audio_NativeAudioEngine_destroy__J(JNIEnv *env MAYBE_UNUSED,
+Java_com_scottishtecharmy_soundscape_audio_NativeAudioEngine_destroy__J(JNIEnv *env MAYBE_UNUSED,
                                                                        jobject thiz MAYBE_UNUSED,
                                                                        jlong engine_handle) {
     auto* ae =
@@ -349,7 +349,7 @@ Java_com_kersnazzle_soundscapealpha_audio_NativeAudioEngine_destroy__J(JNIEnv *e
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_kersnazzle_soundscapealpha_audio_NativeAudioEngine_updateGeometry(JNIEnv *env MAYBE_UNUSED,
+Java_com_scottishtecharmy_soundscape_audio_NativeAudioEngine_updateGeometry(JNIEnv *env MAYBE_UNUSED,
                                                                            jobject thiz MAYBE_UNUSED,
                                                                            jlong engine_handle,
                                                                            jdouble latitude,
@@ -366,7 +366,7 @@ Java_com_kersnazzle_soundscapealpha_audio_NativeAudioEngine_updateGeometry(JNIEn
 }
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_kersnazzle_soundscapealpha_audio_NativeAudioEngine_setBeaconType(JNIEnv *env MAYBE_UNUSED, jobject thiz MAYBE_UNUSED,
+Java_com_scottishtecharmy_soundscape_audio_NativeAudioEngine_setBeaconType(JNIEnv *env MAYBE_UNUSED, jobject thiz MAYBE_UNUSED,
                                                                           jlong engine_handle,
                                                                           jint beacon_type) {
     auto* ae =
@@ -381,7 +381,7 @@ Java_com_kersnazzle_soundscapealpha_audio_NativeAudioEngine_setBeaconType(JNIEnv
 
 extern "C"
 JNIEXPORT jlong JNICALL
-Java_com_kersnazzle_soundscapealpha_audio_NativeAudioEngine_createNativeBeacon(JNIEnv *env MAYBE_UNUSED,
+Java_com_scottishtecharmy_soundscape_audio_NativeAudioEngine_createNativeBeacon(JNIEnv *env MAYBE_UNUSED,
                                                                                jobject thiz MAYBE_UNUSED,
                                                                                jlong engine_handle,
                                                                                jdouble latitude,
@@ -401,7 +401,7 @@ Java_com_kersnazzle_soundscapealpha_audio_NativeAudioEngine_createNativeBeacon(J
 
 extern "C"
 JNIEXPORT jlong JNICALL
-Java_com_kersnazzle_soundscapealpha_audio_NativeAudioEngine_createNativeTextToSpeech(JNIEnv *env MAYBE_UNUSED,
+Java_com_scottishtecharmy_soundscape_audio_NativeAudioEngine_createNativeTextToSpeech(JNIEnv *env MAYBE_UNUSED,
                                                                                      jobject thiz MAYBE_UNUSED,
                                                                                      jlong engine_handle,
                                                                                      jdouble latitude,
