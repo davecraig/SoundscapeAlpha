@@ -20,10 +20,15 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.scottishtecharmy.soundscape.services.LocationService
+import io.ticofab.androidgpxparser.parser.GPXParser
+import io.ticofab.androidgpxparser.parser.domain.Gpx
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import org.xmlpull.v1.XmlPullParserException
+import java.io.IOException
+import java.io.InputStream
 
 
 class MainActivity : ComponentActivity() {
@@ -72,7 +77,7 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         when {
-            permissions.getOrDefault(android.Manifest.permission.ACCESS_FINE_LOCATION, false) -> {
+            permissions.getOrDefault(Manifest.permission.ACCESS_FINE_LOCATION, false) -> {
                 // Precise location access granted, service can run
                 startForegroundService()
             }
@@ -93,6 +98,30 @@ class MainActivity : ComponentActivity() {
             // Next, get the location permissions
             requestLocationPermissions()
         }
+
+    private fun testGpxParsing() {
+        val parser = GPXParser()
+        try {
+            val input: InputStream = assets.open("Test.gpx")
+            val parsedGpx: Gpx? = parser.parse(input)
+            parsedGpx?.let {
+
+                parsedGpx.routes.forEach { route ->
+                    route.routePoints.forEach { waypoint ->
+                        Log.e("gpx", "${waypoint.name}: ${waypoint.latitude}, ${waypoint.longitude} ")
+                    }
+                }
+            } ?: {
+                Log.e("gpx", "Error parsing GPX file")
+            }
+        } catch (e: IOException) {
+            Log.e("gpx", "IOException whilst parsing GPX file")
+            e.printStackTrace()
+        } catch (e: XmlPullParserException) {
+            Log.e("gpx", "XmlPullParserException whilst parsing GPX file")
+            e.printStackTrace()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
 
@@ -119,6 +148,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        testGpxParsing()
 
         org.fmod.FMOD.init(applicationContext)
 
@@ -155,7 +185,7 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             when (ContextCompat.checkSelfPermission(
                 this,
-                android.Manifest.permission.POST_NOTIFICATIONS
+                Manifest.permission.POST_NOTIFICATIONS
             )) {
                 android.content.pm.PackageManager.PERMISSION_GRANTED -> {
                     // permission already granted
@@ -163,14 +193,14 @@ class MainActivity : ComponentActivity() {
                 }
 
                 else -> {
-                    notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
             }
         }
         else {
             when (ContextCompat.checkSelfPermission(
                 this,
-                android.Manifest.permission.ACCESS_FINE_LOCATION
+                Manifest.permission.ACCESS_FINE_LOCATION
             )) {
                 android.content.pm.PackageManager.PERMISSION_GRANTED -> {
                     // permission already granted

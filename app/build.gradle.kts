@@ -128,4 +128,7 @@ dependencies {
     // Realm for Kotlin
     implementation("io.realm.kotlin:library-base:1.13.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.0")
+
+    implementation ("com.github.ticofab:android-gpx-parser:2.3.1")
+
 }
