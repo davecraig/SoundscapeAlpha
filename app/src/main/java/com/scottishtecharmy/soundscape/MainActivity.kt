@@ -1,5 +1,6 @@
 package com.scottishtecharmy.soundscape
 
+import android.Manifest
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
@@ -90,13 +91,7 @@ class MainActivity : ComponentActivity() {
             ActivityResultContracts.RequestPermission()
         ) {
             // Next, get the location permissions
-            locationPermissionRequest.launch(
-                arrayOf(
-                    android.Manifest.permission.ACCESS_FINE_LOCATION,
-                    android.Manifest.permission.ACCESS_COARSE_LOCATION,
-                    android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
-                )
-            )
+            requestLocationPermissions()
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -139,7 +134,7 @@ class MainActivity : ComponentActivity() {
             )
         }
 
-        checkAndRequestNotificationPermission()
+        checkAndRequestPermissions()
         tryToBindToServiceIfRunning()
     }
     override fun onDestroy() {
@@ -156,7 +151,7 @@ class MainActivity : ComponentActivity() {
     /**
      * Check for notification permission before starting the service so that the notification is visible
      */
-    private fun checkAndRequestNotificationPermission() {
+    private fun checkAndRequestPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             when (ContextCompat.checkSelfPermission(
                 this,
@@ -172,18 +167,46 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        else {
+            when (ContextCompat.checkSelfPermission(
+                this,
+                android.Manifest.permission.ACCESS_FINE_LOCATION
+            )) {
+                android.content.pm.PackageManager.PERMISSION_GRANTED -> {
+                    // permission already granted
+                    startForegroundService()
+                }
+                else -> {
+                    requestLocationPermissions()
+                }
+            }
+        }
+    }
+
+    private fun requestLocationPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            locationPermissionRequest.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                    Manifest.permission.ACCESS_BACKGROUND_LOCATION
+                )
+            )
+        }
+        else {
+            locationPermissionRequest.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
     }
 
     private fun onStartOrStopForegroundServiceClick() {
         if (exampleService == null) {
             // service is not yet running, start it after permission check
-            locationPermissionRequest.launch(
-                arrayOf(
-                    android.Manifest.permission.ACCESS_FINE_LOCATION,
-                    android.Manifest.permission.ACCESS_COARSE_LOCATION,
-                    android.Manifest.permission.POST_NOTIFICATIONS
-                )
-            )
+            checkAndRequestPermissions()
         } else {
             // service is already running, stop it
             exampleService?.stopForegroundService()
