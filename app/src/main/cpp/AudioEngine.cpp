@@ -138,12 +138,11 @@ const BeaconDescriptor AudioEngine::msc_BeaconDescriptors[] =
     }
 #endif
 
-    AudioEngine::AudioEngine() noexcept {
+    AudioEngine::AudioEngine() noexcept
+               : m_BeaconTypeIndex(0) {
         FMOD_RESULT result;
 
         TRACE("%s %p", __FUNCTION__, this);
-
-        m_BeaconTypeIndex = 0;
 
         // Create a System object and initialize
         FMOD::System *system;
@@ -153,7 +152,7 @@ const BeaconDescriptor AudioEngine::msc_BeaconDescriptors[] =
         result = m_pSystem->setSoftwareFormat(22050, FMOD_SPEAKERMODE_SURROUND, 0);
         ERROR_CHECK(result);
 
-        result = m_pSystem->init(32, FMOD_INIT_NORMAL, 0);
+        result = m_pSystem->init(32, FMOD_INIT_NORMAL, nullptr);
         ERROR_CHECK(result);
 
         result = m_pSystem->set3DSettings(1.0, FMOD_DISTANCE_FACTOR, 1.0f);
@@ -199,7 +198,7 @@ const BeaconDescriptor AudioEngine::msc_BeaconDescriptors[] =
         TRACE("System release");
         auto result = m_pSystem->release();
         ERROR_CHECK(result);
-        m_pSystem = 0;
+        m_pSystem = nullptr;
     }
 
     void
@@ -209,9 +208,9 @@ const BeaconDescriptor AudioEngine::msc_BeaconDescriptors[] =
 
         // Set listener position
         FMOD_VECTOR listener_position;
-        listener_position.x = listenerLongitude;
+        listener_position.x = static_cast<float>(listenerLongitude);
         listener_position.y = 0.0f;
-        listener_position.z = listenerLatitude;
+        listener_position.z = static_cast<float>(listenerLatitude);
 
         // ********* NOTE ******* READ NEXT COMMENT!!!!!
         // vel = how far we moved last FRAME (m/f), then time compensate it to SECONDS (m/s).
@@ -219,15 +218,15 @@ const BeaconDescriptor AudioEngine::msc_BeaconDescriptors[] =
         const int INTERFACE_UPDATE_TIME = 50;
 
         FMOD_VECTOR vel;
-        vel.x = (listener_position.x - m_LastPos.x) * (1000 / INTERFACE_UPDATE_TIME);
-        vel.y = (listener_position.y - m_LastPos.y) * (1000 / INTERFACE_UPDATE_TIME);
-        vel.z = (listener_position.z - m_LastPos.z) * (1000 / INTERFACE_UPDATE_TIME);
+        vel.x = static_cast<float>((listener_position.x - m_LastPos.x) * (1000.0 / INTERFACE_UPDATE_TIME));
+        vel.y = static_cast<float>((listener_position.y - m_LastPos.y) * (1000.0 / INTERFACE_UPDATE_TIME));
+        vel.z = static_cast<float>((listener_position.z - m_LastPos.z) * (1000.0 / INTERFACE_UPDATE_TIME));
 
         // store pos for next time
         m_LastPos = listener_position;
 
         // Set listener direction
-        float rads = (listenerHeading * M_PI) / 180.0;
+        auto rads = static_cast<float>((listenerHeading * M_PI) / 180.0);
         FMOD_VECTOR forward = {sin(rads), 0.0f, cos(rads)};
 
         //TRACE("heading: %d %f, %f %f", heading, rads, forward.x, forward.z)
@@ -323,7 +322,7 @@ const BeaconDescriptor AudioEngine::msc_BeaconDescriptors[] =
 
 extern "C"
 JNIEXPORT jlong JNICALL
-Java_com_scottishtecharmy_soundscape_audio_NativeAudioEngine_create__(JNIEnv *env MAYBE_UNUSED, jobject thiz MAYBE_UNUSED) {
+Java_com_scottishtecharmy_soundscape_audio_NativeAudioEngine_create(JNIEnv *env MAYBE_UNUSED, jobject thiz MAYBE_UNUSED) {
     auto ae = std::make_unique<soundscape::AudioEngine>();
 
     if (not ae) {
@@ -336,15 +335,12 @@ Java_com_scottishtecharmy_soundscape_audio_NativeAudioEngine_create__(JNIEnv *en
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_scottishtecharmy_soundscape_audio_NativeAudioEngine_destroy__J(JNIEnv *env MAYBE_UNUSED,
-                                                                       jobject thiz MAYBE_UNUSED,
-                                                                       jlong engine_handle) {
+Java_com_scottishtecharmy_soundscape_audio_NativeAudioEngine_destroy(JNIEnv *env MAYBE_UNUSED,
+                                                                     jobject thiz MAYBE_UNUSED,
+                                                                     jlong engine_handle) {
     auto* ae =
             reinterpret_cast<soundscape::AudioEngine*>(engine_handle);
-    if(ae)
-        delete ae;
-    else
-        TRACE("destroy failed - no AudioEngine");
+    delete ae;
 }
 
 extern "C"
@@ -400,13 +396,12 @@ Java_com_scottishtecharmy_soundscape_audio_NativeAudioEngine_createNativeBeacon(
 }
 
 extern "C"
-JNIEXPORT jlong JNICALL
+JNIEXPORT void JNICALL
 Java_com_scottishtecharmy_soundscape_audio_NativeAudioEngine_destroyNativeBeacon(JNIEnv *env MAYBE_UNUSED,
                                                                                 jobject thiz MAYBE_UNUSED,
                                                                                 jlong beacon_handle) {
-    soundscape::Beacon* beacon = reinterpret_cast<soundscape::Beacon*>(beacon_handle);
+    auto beacon = reinterpret_cast<soundscape::Beacon*>(beacon_handle);
     delete beacon;
-    return 0L;
 }
 
 extern "C"

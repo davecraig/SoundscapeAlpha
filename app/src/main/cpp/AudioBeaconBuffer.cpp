@@ -1,7 +1,7 @@
 #include <unistd.h>
 #include <thread>
 #include <filesystem>
-#include <assert.h>
+#include <cassert>
 #include <android/log.h>
 #include <fcntl.h>
 #include "GeoUtils.h"
@@ -20,7 +20,7 @@ BeaconBuffer::BeaconBuffer(FMOD::System *system, const std::string &filename, do
 {
         FMOD::Sound* sound;
 
-        auto result = system->createSound(filename.c_str(), FMOD_DEFAULT | FMOD_OPENONLY, NULL, &sound);
+        auto result = system->createSound(filename.c_str(), FMOD_DEFAULT | FMOD_OPENONLY, nullptr, &sound);
         ERROR_CHECK(result);
 
         result = sound->getLength(&m_BufferSize, FMOD_TIMEUNIT_RAWBYTES);
@@ -40,7 +40,7 @@ BeaconBuffer::~BeaconBuffer() {
     TRACE("~BeaconBuffer");
 }
 
-bool BeaconBuffer::CheckIsActive(double degrees_off_axis)
+bool BeaconBuffer::CheckIsActive(double degrees_off_axis) const
 {
     if(fabs(degrees_off_axis) <= m_MaxAngle)
         return true;
@@ -50,7 +50,7 @@ bool BeaconBuffer::CheckIsActive(double degrees_off_axis)
 
 unsigned int BeaconBuffer::Read(void *data, unsigned int data_length, unsigned long pos) {
     unsigned int remainder = 0;
-    unsigned char *dest =(unsigned char *)data;
+    auto *dest =(unsigned char *)data;
     pos %= m_BufferSize;
     if((m_BufferSize - pos) < data_length) {
         remainder = data_length - (m_BufferSize - pos);
@@ -88,8 +88,6 @@ BeaconBufferGroup::~BeaconBufferGroup()
 
 void BeaconBufferGroup::CreateSound(FMOD::System *system, FMOD::Sound **sound)
 {
-#define BEAT_COUNT 6        // TODO: This is taken from the original Soundscape but varies with beacon sound
-
     TRACE("BeaconBufferGroup CreateSound %p", this);
 
     FMOD_CREATESOUNDEXINFO extra_info;
@@ -98,13 +96,12 @@ void BeaconBufferGroup::CreateSound(FMOD::System *system, FMOD::Sound **sound)
     extra_info.numchannels = 1;
     extra_info.defaultfrequency = 44100;
     extra_info.length = m_pBuffers[0]->GetBufferSize();                         /* Length of PCM data in bytes of whole song (for Sound::getLength) */
-    extra_info.decodebuffersize = extra_info.length / (4 *
-                                                       BEAT_COUNT);       /* Chunk size of stream update in samples. This will be the amount of data passed to the user callback. */
+    extra_info.decodebuffersize = extra_info.length / (2 * m_pDescription->m_BeatsInPhrase);       /* Chunk size of stream update in samples. This will be the amount of data passed to the user callback. */
     extra_info.format = FMOD_SOUND_FORMAT_PCM16;                    /* Data format of sound. */
     extra_info.pcmreadcallback = StaticPcmReadCallback;             /* User callback for reading. */
     extra_info.userdata = this;
 
-    auto result = system->createSound(0,
+    auto result = system->createSound(nullptr,
                                       FMOD_OPENUSER | FMOD_LOOP_NORMAL | FMOD_3D |
                                       FMOD_CREATESTREAM,
                                       &extra_info,
@@ -173,7 +170,7 @@ void TtsAudioSource::CreateSound(FMOD::System *system, FMOD::Sound **sound)
     extra_info.pcmreadcallback = StaticPcmReadCallback;             /* User callback for reading. */
     extra_info.userdata = this;
 
-    auto result = system->createSound(0,
+    auto result = system->createSound(nullptr,
                                       FMOD_OPENUSER | FMOD_LOOP_OFF | FMOD_3D |
                                       FMOD_CREATESTREAM,
                                       &extra_info,
@@ -190,7 +187,7 @@ FMOD_RESULT F_CALLBACK TtsAudioSource::PcmReadCallback(void *data, unsigned int 
 
     ssize_t total_bytes_read = 0;
     ssize_t bytes_read;
-    unsigned char *write_ptr = (unsigned char *)data;
+    auto write_ptr = (unsigned char *)data;
     while(data_length > 0) {
         bytes_read = read(m_TtsSocket, write_ptr, data_length);
         //TRACE("%p: read %zd/%zd/%u", this, bytes_read, total_bytes_read, data_length);

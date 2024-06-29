@@ -20,8 +20,8 @@ namespace soundscape {
 
         unsigned int Read(void *data, unsigned int data_length, unsigned long pos);
 
-        unsigned int GetBufferSize() { return m_BufferSize; }
-        bool CheckIsActive(double degrees_off_axis);
+        unsigned int GetBufferSize() const { return m_BufferSize; }
+        bool CheckIsActive(double degrees_off_axis) const;
 
     private:
         double m_MaxAngle;
@@ -33,8 +33,10 @@ namespace soundscape {
 
     class BeaconAudioSource {
     public:
-        BeaconAudioSource(PositionedAudio *parent) : m_pParent(parent) {}
-        virtual ~BeaconAudioSource() {}
+        explicit BeaconAudioSource(PositionedAudio *parent) :
+            m_pParent(parent),
+            degreesOffAxis(0){}
+        virtual ~BeaconAudioSource() = default;
 
         virtual void CreateSound(FMOD::System *system, FMOD::Sound **sound) = 0;
         virtual FMOD_RESULT F_CALLBACK PcmReadCallback(void *data, unsigned int data_length) = 0;
@@ -53,10 +55,10 @@ namespace soundscape {
     class BeaconBufferGroup : public BeaconAudioSource {
     public:
         BeaconBufferGroup(const AudioEngine *ae, PositionedAudio *parent);
-        virtual ~BeaconBufferGroup();
+        ~BeaconBufferGroup() override;
 
-        virtual void CreateSound(FMOD::System *system, FMOD::Sound **sound);
-        virtual FMOD_RESULT F_CALLBACK PcmReadCallback(void *data, unsigned int data_length);
+        void CreateSound(FMOD::System *system, FMOD::Sound **sound) override;
+        FMOD_RESULT F_CALLBACK PcmReadCallback(void *data, unsigned int data_length) override;
 
     private:
         void UpdateCurrentBufferFromHeading();
@@ -70,10 +72,10 @@ namespace soundscape {
     class TtsAudioSource : public BeaconAudioSource {
     public:
         TtsAudioSource(const AudioEngine *ae, PositionedAudio *parent, int tts_socket);
-        virtual ~TtsAudioSource();
+        ~TtsAudioSource() override;
 
-        virtual void CreateSound(FMOD::System *system, FMOD::Sound **sound);
-        virtual FMOD_RESULT F_CALLBACK PcmReadCallback(void *data, unsigned int data_length);
+        void CreateSound(FMOD::System *system, FMOD::Sound **sound) override;
+        FMOD_RESULT F_CALLBACK PcmReadCallback(void *data, unsigned int data_length) override;
 
     private:
         int m_TtsSocket;

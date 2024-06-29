@@ -4,7 +4,6 @@ import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
 import android.location.Location
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
@@ -103,8 +102,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
 
         super.onCreate(savedInstanceState)
-
-        val data: Uri? = intent?.data
 
         // Figure out what to do based on the intent type
         if(intent != null) {
@@ -216,7 +213,7 @@ class MainActivity : ComponentActivity() {
     private fun onServiceConnected() {
 
         if(intentLatitude != 0.0 && intentLongitude != 0.0)
-            exampleService?.createBeacon(intentLatitude, intentLongitude);
+            exampleService?.createBeacon(intentLatitude, intentLongitude)
 
         lifecycleScope.launch {
             // observe location updates from the service

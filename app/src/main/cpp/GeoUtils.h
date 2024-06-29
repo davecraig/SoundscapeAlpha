@@ -1,6 +1,6 @@
 #pragma once
 
-#include <math.h>
+#include <cmath>
 
 //
 // C++ versions of GeoUtils functions
@@ -13,7 +13,7 @@ const double EARTH_RADIUS_METERS = 6378137.0;   //  Original Soundscape uses 637
 // were X/Y coordinates. We can only do this because we're always close enough to our beacons to
 // consider the earth as flat. FMOD_DISTANCE_FACTOR is set to the number of metres per degree of
 // longitude/latitude.
-const float FMOD_DISTANCE_FACTOR = (2.0 * M_PI * EARTH_RADIUS_METERS) / 360.0;
+const float FMOD_DISTANCE_FACTOR = static_cast<float>((2.0 * M_PI * EARTH_RADIUS_METERS) / 360.0);
 
 inline double toRadians(double degrees)
 {

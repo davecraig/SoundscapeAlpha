@@ -13,7 +13,6 @@ import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.location.Location
 import android.os.Binder
-import android.os.Build
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
@@ -43,16 +42,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelChildren
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import retrofit2.awaitResponse
 import java.util.concurrent.Executors
-import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 
@@ -190,8 +184,6 @@ class LocationService : Service() {
                             _locationFlow.value = location
                         }
                     }
-                    .addOnFailureListener { exception: Exception ->
-                    }
             }
         }
 
@@ -254,38 +246,6 @@ class LocationService : Service() {
             locationCallback,
             Looper.getMainLooper(),
         )
-    }
-
-    /**
-     * Starts a ticker that shows a toast every [TICKER_PERIOD_SECONDS] seconds to indicate that the service is still running.
-     */
-    private fun startServiceRunningTicker() {
-        timerJob?.cancel()
-        timerJob = coroutineScope.launch {
-            tickerFlow()
-                .collectLatest {
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(
-                            this@LocationService,
-                            "Foreground Service still running.",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                        //audioEngine.createTextToSpeech(-90.0, 0.0, "Located")
-                        //audioEngine.createTextToSpeech(90.0, 0.0, "speech test")
-                    }
-                }
-        }
-    }
-
-    private fun tickerFlow(
-        period: Duration = TICKER_PERIOD_SECONDS,
-        initialDelay: Duration = TICKER_PERIOD_SECONDS
-    ) = flow {
-        delay(initialDelay)
-        while (true) {
-            emit(Unit)
-            delay(period)
-        }
     }
 
     private fun getNotification(): Notification {
@@ -361,8 +321,6 @@ class LocationService : Service() {
         private const val TAG = "LocationService"
         // Check for GPS every n seconds
         private val LOCATION_UPDATES_INTERVAL_MS = 1.seconds.inWholeMilliseconds
-        // Secondary "service" every n seconds
-        private val TICKER_PERIOD_SECONDS = 10.seconds
 
         private const val CHANNEL_ID = "LocationService_channel_01"
         private const val NOTIFICATION_CHANNEL_NAME = "Soundscape_LocationService"

@@ -21,7 +21,7 @@ namespace soundscape {
     public:
         BeaconDescriptor(unsigned int beats_in_phrase, const std::vector<BeaconAsset> &beacons)
         : m_BeatsInPhrase(beats_in_phrase),
-          m_Beacons(std::move(beacons))
+          m_Beacons(beacons)
         {
         }
 

@@ -48,7 +48,7 @@ namespace soundscape {
         }
 
     protected:
-        bool CreateAudioSource()
+        bool CreateAudioSource() final
         {
             m_pAudioSource = std::make_unique<BeaconBufferGroup>(m_pEngine, this);
             // Not queued
@@ -66,7 +66,7 @@ namespace soundscape {
         }
 
     protected:
-        bool CreateAudioSource()
+        bool CreateAudioSource() final
         {
             m_pAudioSource = std::make_unique<TtsAudioSource>(m_pEngine, this, m_TtsSocket);
             // Text to speech audio are queued to play one after the other

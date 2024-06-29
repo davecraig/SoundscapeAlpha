@@ -9,9 +9,8 @@ using namespace soundscape;
 
 PositionedAudio::PositionedAudio(AudioEngine *engine,
                                  double latitude, double longitude)
+                :m_Eof(false)
 {
-    m_Eof = false;
-
     m_Latitude = latitude;
     m_Longitude = longitude;
 
@@ -47,7 +46,7 @@ void PositionedAudio::InitFmodSound() {
         FMOD_VECTOR pos = {(float) m_Longitude, 0.0f, (float) m_Latitude};
         FMOD_VECTOR vel = {0.0f, 0.0f, 0.0f};
 
-        result = m_pSystem->playSound(m_pSound, 0, false, &m_pChannel);
+        result = m_pSystem->playSound(m_pSound, nullptr, false, &m_pChannel);
         ERROR_CHECK(result);
 
         result = m_pChannel->set3DAttributes(&pos, &vel);

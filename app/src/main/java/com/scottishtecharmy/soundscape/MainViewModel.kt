@@ -10,9 +10,9 @@ import kotlinx.coroutines.launch
 class MainViewModel(var tileService: ITiles = Tiles()): ViewModel() {
     var tile: MutableLiveData<String?> = MutableLiveData<String?>()
 
-    fun getTile(xtile: Int, ytile: Int) {
+    fun getTile(xTile: Int, yTile: Int) {
         viewModelScope.launch {
-            val innerTile = tileService.getTile(xtile, ytile).toString()
+            val innerTile = tileService.getTile(xTile, yTile).toString()
             tile.postValue(innerTile)
         }
     }
