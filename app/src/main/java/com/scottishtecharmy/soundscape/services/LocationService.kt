@@ -73,7 +73,6 @@ class LocationService : Service() {
 
     private val audioEngine = NativeAudioEngine()
     private var audioBeacon: Long = 0
-    private var audioBeaconCreated: Boolean = false
 
     // secondary service
     private var timerJob: Job? = null
@@ -351,11 +350,11 @@ class LocationService : Service() {
     }
 
     fun createBeacon(latitude: Double, longitude: Double) {
-        if(!audioBeaconCreated) {
-            audioBeaconCreated = true
-
-            audioBeacon = audioEngine.createBeacon(latitude, longitude)
+        if(audioBeacon != 0L)
+        {
+            audioEngine.destroyBeacon(audioBeacon)
         }
+        audioBeacon = audioEngine.createBeacon(latitude, longitude)
     }
 
     companion object {

@@ -22,6 +22,7 @@ class NativeAudioEngine : AudioEngine, TextToSpeech.OnInitListener {
     private external fun create() : Long
     private external fun destroy(engineHandle: Long)
     private external fun createNativeBeacon(engineHandle: Long, latitude: Double, longitude: Double) :  Long
+    private external fun destroyNativeBeacon(beaconHandle: Long)
     private external fun createNativeTextToSpeech(engineHandle: Long, latitude: Double, longitude: Double, ttsSocket: Int) :  Long
     private external fun updateGeometry(engineHandle: Long, latitude: Double, longitude: Double, heading: Double)
     private external fun setBeaconType(engineHandle: Long, beaconType: Int)
@@ -112,6 +113,16 @@ class NativeAudioEngine : AudioEngine, TextToSpeech.OnInitListener {
             }
 
             return 0
+        }
+    }
+
+    override fun destroyBeacon(beaconHandle: Long)
+    {
+        synchronized(engineMutex) {
+            if(beaconHandle != 0L) {
+                Log.d(TAG, "Call destroyNativeBeacon")
+                destroyNativeBeacon(beaconHandle)
+            }
         }
     }
 

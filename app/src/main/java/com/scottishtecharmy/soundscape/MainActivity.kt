@@ -150,7 +150,9 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
         org.fmod.FMOD.close()
 
-        exampleService?.stopForegroundService()
+        // We leave the foreground service running for now - the user can click on the close button to stop it
+        //exampleService?.stopForegroundService()
+
         unbindService(connection)
     }
 

@@ -28,13 +28,17 @@
             android:label="@string/app_name"
             android:theme="@style/Theme.Soundscape">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
+                <action android:name="android.intent.action.MAIN"
+                        android:launchMode="singleTask"
+                />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
             <intent-filter>
                 <data android:scheme="geo" />
-                <action android:name="android.intent.action.VIEW"/>
+                <action android:name="android.intent.action.VIEW"
+                    android:launchMode="singleTask"
+                />
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE" />
             </intent-filter>

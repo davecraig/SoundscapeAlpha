@@ -401,6 +401,16 @@ Java_com_scottishtecharmy_soundscape_audio_NativeAudioEngine_createNativeBeacon(
 
 extern "C"
 JNIEXPORT jlong JNICALL
+Java_com_scottishtecharmy_soundscape_audio_NativeAudioEngine_destroyNativeBeacon(JNIEnv *env MAYBE_UNUSED,
+                                                                                jobject thiz MAYBE_UNUSED,
+                                                                                jlong beacon_handle) {
+    soundscape::Beacon* beacon = reinterpret_cast<soundscape::Beacon*>(beacon_handle);
+    delete beacon;
+    return 0L;
+}
+
+extern "C"
+JNIEXPORT jlong JNICALL
 Java_com_scottishtecharmy_soundscape_audio_NativeAudioEngine_createNativeTextToSpeech(JNIEnv *env MAYBE_UNUSED,
                                                                                      jobject thiz MAYBE_UNUSED,
                                                                                      jlong engine_handle,
