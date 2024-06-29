@@ -14,6 +14,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -67,14 +68,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // we need notification permission to be able to display a notification for the foreground service
-    private val notificationPermissionLauncher =
-        registerForActivityResult(
-            ActivityResultContracts.RequestPermission()
-        ) {
-            // if permission was denied, the service can still run only the notification won't be visible
-        }
-
     // we need location permission to be able to start the service
     private val locationPermissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -92,6 +85,21 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    // we need notification permission to be able to display a notification for the foreground service
+    private val notificationPermissionLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) {
+            // Next, get the location permissions
+            locationPermissionRequest.launch(
+                arrayOf(
+                    android.Manifest.permission.ACCESS_FINE_LOCATION,
+                    android.Manifest.permission.ACCESS_COARSE_LOCATION,
+                    android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
+                )
+            )
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
 
@@ -136,15 +144,6 @@ class MainActivity : ComponentActivity() {
         }
 
         checkAndRequestNotificationPermission()
-
-        locationPermissionRequest.launch(
-            arrayOf(
-                android.Manifest.permission.ACCESS_FINE_LOCATION,
-                android.Manifest.permission.ACCESS_COARSE_LOCATION,
-                android.Manifest.permission.ACCESS_BACKGROUND_LOCATION,
-                android.Manifest.permission.POST_NOTIFICATIONS
-            )
-        )
         tryToBindToServiceIfRunning()
     }
     override fun onDestroy() {
@@ -167,6 +166,7 @@ class MainActivity : ComponentActivity() {
             )) {
                 android.content.pm.PackageManager.PERMISSION_GRANTED -> {
                     // permission already granted
+                    startForegroundService()
                 }
 
                 else -> {
