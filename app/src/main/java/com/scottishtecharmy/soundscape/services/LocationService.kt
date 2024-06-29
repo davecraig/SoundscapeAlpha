@@ -13,6 +13,7 @@ import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.location.Location
 import android.os.Binder
+import android.os.Build
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
@@ -365,7 +366,7 @@ class LocationService : Service() {
         private val TICKER_PERIOD_SECONDS = 10.seconds
 
         private const val CHANNEL_ID = "LocationService_channel_01"
-        private const val NOTIFICATION_CHANNEL_NAME = "SoundscapeAlpha_LocationService"
+        private const val NOTIFICATION_CHANNEL_NAME = "Soundscape_LocationService"
         private const val NOTIFICATION_ID = 1000000
     }
 }
