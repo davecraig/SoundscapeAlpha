@@ -121,6 +121,8 @@ void BeaconBufferGroup::UpdateCurrentBufferFromHeading()
             break;
         }
     }
+    if(m_pCurrentBuffer == nullptr)
+        m_pCurrentBuffer = m_pBuffers[0].get();
 }
 
 FMOD_RESULT F_CALLBACK BeaconBufferGroup::PcmReadCallback(void *data, unsigned int data_length)
