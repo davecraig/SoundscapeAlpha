@@ -19,6 +19,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       # Set version As Env Variable
       - name: Set 'git describe --tags' as version
