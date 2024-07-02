@@ -4,8 +4,8 @@ env:
   # The name of the main module repository
   main_project_module: app
 
-  # The name of the Play Store
-  playstore_name: Soundscape ID
+  # The name in the Play Store
+  playstore_name: Soundscape
 
 on:
   # Allows you to run this workflow manually from the Actions tab
@@ -20,9 +20,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Set Current Date As Env Variable
-      - name: Set current date as env variable
-        run: echo "date_today=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+      # Set version As Env Variable
+      - name: Set 'git describe --tags' as version
+        run: echo "version=$(git describe --tags)" >> $GITHUB_ENV
 
       # Set Repository Name As Env Variable
       - name: Set repository name as env variable
@@ -89,14 +89,14 @@ jobs:
       - name: Upload APK Debug - ${{ env.repository_name }}
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.date_today }} - ${{ env.repository_name }} debug APK
+          name: ${{ env.version }} - ${{ env.repository_name }} debug APK
           path: ${{ env.main_project_module }}/build/outputs/apk/debug/
 
       # Noted For Output [main_project_module]/build/outputs/apk/release/
       - name: Upload APK Release - ${{ env.repository_name }}
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.date_today }} - ${{ env.repository_name }} release APK
+          name: ${{ env.version }} - ${{ env.repository_name }} release APK
           path: |
             ${{ env.main_project_module }}/build/outputs/apk/release/
             ${{ env.main_project_module }}/build/outputs/mapping/release/
@@ -105,7 +105,7 @@ jobs:
       - name: Upload AAB (App Bundle) Release - ${{ env.repository_name }}
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.date_today }} - ${{ env.repository_name }} release AAB
+          name: ${{ env.version }} - ${{ env.repository_name }} release AAB
           path: |
             ${{ env.main_project_module }}/build/outputs/bundle/release/
             ${{ env.main_project_module }}/build/outputs/mapping/release/
