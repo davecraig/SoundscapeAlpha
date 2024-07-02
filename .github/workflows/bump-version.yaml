@@ -1,0 +1,48 @@
+name: Bump version code and commit
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+      
+jobs:
+  bump-version-and-open-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        
+      - name: Extract existing version code from build.gradle
+        run: |
+          # Get existing version code from build.gradle
+          version_code=$(grep "versionCode" app/build.gradle.kts | awk '{print $3}' | tr -d '\n')
+          version_name=$(grep "versionName" app/build.gradle.kts | awk '{print $3}' | tr -d '\"\"')
+          major_version=$(echo $version_name |  awk -F \. {'print $1'})
+          minor_version=$(echo $version_name |  awk -F \. {'print $2'})
+          build_version=$(echo $version_name |  awk -F \. {'print $3'})
+
+          # Increment existing version code and build version by 1
+          version_code=$((version_code + 1))
+          build_version=$((build_version + 1))
+          
+          # The major and minor versions can be bumped manually by editing
+          # app/build.gradle.kts. When doing this, reset the build version
+          # to zero.
+
+          # Set environment variable for later use
+          echo "VERSION_CODE=$version_code" >> $GITHUB_ENV
+          echo "VERSION_NAME=$major_version.$minor_version.$build_version" >> $GITHUB_ENV
+
+      - name: Increase version code and change version name
+        run: |
+          # Update build.gradle with new version code and name
+          echo "${{ env.VERSION_CODE }} - ${{ env.VERSION_NAME }}"
+          sed -i "s/versionCode = [0-9]\+/versionCode = ${{ env.VERSION_CODE }}/g" app/build.gradle.kts
+          sed -i "s/versionName = \"[^\"]*\"/versionName  =\"${{ env.VERSION_NAME }}\"/g" app/build.gradle.kts
+
+      - name: Commit and push changes
+        run: |
+          git config user.email "davecraig@unbalancedaudio.com"
+          git config user.name "davecraig"
+          git commit -am "Bump version to ${{ env.VERSION_NAME }}, version code ${{ env.VERSION_CODE }}"
+          git push origin HEAD
+          git tag soundscape-${{ env.VERSION_NAME }}
+          git push --tags
