@@ -24,7 +24,7 @@ android {
         applicationId = "com.scottishtecharmy.soundscape"
         minSdk = 30
         targetSdk = 34
-        versionCode = 5
+        versionCode = 6
         versionName  = "0.0.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
