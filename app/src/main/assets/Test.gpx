@@ -18,29 +18,20 @@
     </extensions>
   </metadata>
   <rte>
-    <rtept lat="55.947256" lon="-4.305852">
-      <name>Waypoint 1</name>
+    <rtept lat="55.8610697" lon="-4.2499327">
+      <name>George Square, Glasgow</name>
     </rtept>
-    <rtept lat="55.946412" lon="-4.305621">
-      <name>Waypoint 2</name>
+    <rtept lat="55.9488161" lon="-3.2021476">
+      <name>Edinburgh Castle</name>
     </rtept>
-    <rtept lat="55.946409" lon="-4.304833">
-      <name>Waypoint 3</name>
+    <rtept lat="51.4779644" lon="0.0">
+      <name>Greenwich Prime Meridian, London</name>
     </rtept>
-    <rtept lat="55.945706" lon="-4.304774">
-      <name>Waypoint 4</name>
+    <rtept lat="36.1636308" lon="-5.392716">
+      <name>Rock of Gibraltar</name>
     </rtept>
-    <rtept lat="55.945727" lon="-4.307563">
-      <name>Waypoint 5</name>
-    </rtept>
-    <rtept lat="55.946424" lon="-4.307574">
-      <name>Waypoint 6</name>
-    </rtept>
-    <rtept lat="55.946436" lon="-4.305745">
-      <name>Waypoint 7</name>
-    </rtept>
-    <rtept lat="55.947286" lon="-4.305696">
-      <name>Waypoint 8</name>
+    <rtept lat="57.4680357" lon="-4.263057">
+      <name>Inverness</name>
     </rtept>
   </rte>
 </gpx>
