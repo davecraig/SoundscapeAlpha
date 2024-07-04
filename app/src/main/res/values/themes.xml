@@ -2,4 +2,10 @@
 <resources>
 
     <style name="Theme.Soundscape" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <style name="Theme.Soundscape.MySplash" parent="Theme.SplashScreen" >
+        <item name="windowSplashScreenBackground">#FF604696</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_skyscrapers</item>
+        <item name="postSplashScreenTheme">@style/Theme.Soundscape</item>
+    </style>
 </resources>

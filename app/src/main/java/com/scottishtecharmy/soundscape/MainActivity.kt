@@ -7,7 +7,9 @@ import android.content.ServiceConnection
 import android.location.Location
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -18,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import com.scottishtecharmy.soundscape.services.LocationService
 import io.ticofab.androidgpxparser.parser.GPXParser
@@ -127,6 +130,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         Log.e("version","Version: ${BuildConfig.VERSION_NAME}")
+
+        // Display a splash screen for a few seconds
+        var keepSplashOnScreen = true
+        val delay = 5000L
+        installSplashScreen().setKeepOnScreenCondition { keepSplashOnScreen }
+        Handler(Looper.getMainLooper()).postDelayed({ keepSplashOnScreen = false }, delay)
 
         // Figure out what to do based on the intent type
         if(intent != null) {

@@ -147,4 +147,5 @@ dependencies {
 
     implementation ("com.github.ticofab:android-gpx-parser:2.3.1")
 
+    implementation ("androidx.core:core-splashscreen:1.0.1")
 }
