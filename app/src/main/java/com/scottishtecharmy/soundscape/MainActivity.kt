@@ -30,7 +30,6 @@ import org.xmlpull.v1.XmlPullParserException
 import java.io.IOException
 import java.io.InputStream
 
-
 class MainActivity : ComponentActivity() {
     // GeoJSON Tile data direct from backend
     val viewModel by viewModels<MainViewModel>()
@@ -126,6 +125,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
 
         super.onCreate(savedInstanceState)
+
+        Log.e("version","Version: ${BuildConfig.VERSION_NAME}")
 
         // Figure out what to do based on the intent type
         if(intent != null) {

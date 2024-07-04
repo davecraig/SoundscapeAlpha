@@ -106,6 +106,19 @@ private fun ForegroundServiceSampleScreenContent(
                     orientation = currentOrientation
                 )
             }
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Bottom,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+            ) {
+                Text(
+                    text = "v" + BuildConfig.VERSION_NAME,
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
         }
     }
 }

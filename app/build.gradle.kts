@@ -11,6 +11,10 @@ android {
     namespace = "com.scottishtecharmy.soundscape"
     compileSdk = 34
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     signingConfigs {
         create("release") {
             storeFile = file("keystore.jks")
@@ -26,6 +30,8 @@ android {
         targetSdk = 34
         versionCode = 9
         versionName = "0.0.9"
+
+        buildConfigField("String", "VERSION_NAME", "\"${versionName}\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
