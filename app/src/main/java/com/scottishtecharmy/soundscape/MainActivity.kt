@@ -7,9 +7,7 @@ import android.content.ServiceConnection
 import android.location.Location
 import android.os.Build
 import android.os.Bundle
-import android.os.Handler
 import android.os.IBinder
-import android.os.Looper
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -22,22 +20,18 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
+import com.scottishtecharmy.soundscape.gpx.GpxActivity
 import com.scottishtecharmy.soundscape.services.LocationService
-import io.ticofab.androidgpxparser.parser.GPXParser
-import io.ticofab.androidgpxparser.parser.domain.Gpx
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import org.xmlpull.v1.XmlPullParserException
-import java.io.IOException
-import java.io.InputStream
 
 class MainActivity : ComponentActivity() {
     // GeoJSON Tile data direct from backend
     val viewModel by viewModels<MainViewModel>()
 
-    private var exampleService: LocationService? = null
+    private var locationService: LocationService? = null
 
     private var serviceBoundState by mutableStateOf(false)
     private var displayableLocation by mutableStateOf<String?>(null)
@@ -59,7 +53,7 @@ class MainActivity : ComponentActivity() {
             Log.d(TAG, "onServiceConnected")
 
             val binder = service as LocationService.LocalBinder
-            exampleService = binder.getService()
+            locationService = binder.getService()
             serviceBoundState = true
 
             onServiceConnected()
@@ -70,7 +64,7 @@ class MainActivity : ComponentActivity() {
             Log.d(TAG, "onServiceDisconnected")
 
             serviceBoundState = false
-            exampleService = null
+            locationService = null
         }
     }
 
@@ -101,41 +95,14 @@ class MainActivity : ComponentActivity() {
             requestLocationPermissions()
         }
 
-    private fun testGpxParsing() {
-        val parser = GPXParser()
-        try {
-            val input: InputStream = assets.open("Test.gpx")
-            val parsedGpx: Gpx? = parser.parse(input)
-            parsedGpx?.let {
-
-                parsedGpx.routes.forEach { route ->
-                    route.routePoints.forEach { waypoint ->
-                        Log.e("gpx", "${waypoint.name}: ${waypoint.latitude}, ${waypoint.longitude} ")
-                    }
-                }
-            } ?: {
-                Log.e("gpx", "Error parsing GPX file")
-            }
-        } catch (e: IOException) {
-            Log.e("gpx", "IOException whilst parsing GPX file")
-            e.printStackTrace()
-        } catch (e: XmlPullParserException) {
-            Log.e("gpx", "XmlPullParserException whilst parsing GPX file")
-            e.printStackTrace()
-        }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
 
         super.onCreate(savedInstanceState)
 
         Log.e("version","Version: ${BuildConfig.VERSION_NAME}")
 
-        // Display a splash screen for a few seconds
-        var keepSplashOnScreen = true
-        val delay = 5000L
-        installSplashScreen().setKeepOnScreenCondition { keepSplashOnScreen }
-        Handler(Looper.getMainLooper()).postDelayed({ keepSplashOnScreen = false }, delay)
+        // Splash screen
+        installSplashScreen()
 
         // Figure out what to do based on the intent type
         if(intent != null) {
@@ -158,7 +125,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        testGpxParsing()
 
         org.fmod.FMOD.init(applicationContext)
 
@@ -170,7 +136,11 @@ class MainActivity : ComponentActivity() {
                 currentOrientation = displayableOrientation,
                 tileString = displayableTileString,
                 location = location,
-                onClick = ::onStartOrStopForegroundServiceClick
+                onServiceClick = ::onStartOrStopForegroundServiceClick,
+                onGpxClick = {
+                    val intent = Intent(this, GpxActivity::class.java)
+                    startActivity(intent)
+                }
             )
         }
 
@@ -182,8 +152,7 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
         org.fmod.FMOD.close()
 
-        // We leave the foreground service running for now - the user can click on the close button to stop it
-        //exampleService?.stopForegroundService()
+        // We leave the foreground service running - the user can click on the close button to stop it
 
         unbindService(connection)
     }
@@ -244,13 +213,13 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun onStartOrStopForegroundServiceClick() {
-        if (exampleService == null) {
+        if (locationService == null) {
             // service is not yet running, start it after permission check
             checkAndRequestPermissions()
         } else {
             // service is already running, stop it
-            exampleService?.stopForegroundService()
-            exampleService = null
+            locationService?.stopForegroundService()
+            locationService = null
         }
     }
 
@@ -276,11 +245,11 @@ class MainActivity : ComponentActivity() {
     private fun onServiceConnected() {
 
         if(intentLatitude != 0.0 && intentLongitude != 0.0)
-            exampleService?.createBeacon(intentLatitude, intentLongitude)
+            locationService?.createBeacon(intentLatitude, intentLongitude)
 
         lifecycleScope.launch {
             // observe location updates from the service
-            exampleService?.locationFlow?.map {
+            locationService?.locationFlow?.map {
                 it?.let { location ->
                     "${location.latitude}, ${location.longitude} (${location.accuracy})"
                 }
@@ -290,7 +259,7 @@ class MainActivity : ComponentActivity() {
         }
 
         lifecycleScope.launch {
-            exampleService?.orientationFlow?.map {
+            locationService?.orientationFlow?.map {
                 it?.let {
                     orientation ->
                     "Device orientation: ${orientation.headingDegrees}"
@@ -302,14 +271,14 @@ class MainActivity : ComponentActivity() {
 
         lifecycleScope.launch {
             delay(10000)
-            val test = exampleService?.getTileString()
+            val test = locationService?.getTileString()
 
             println(test)
         }
 
         lifecycleScope.launch {
             delay(10000)
-            val test = exampleService?.getTileStringCaching(application)
+            val test = locationService?.getTileStringCaching(application)
 
             println(test)
         }

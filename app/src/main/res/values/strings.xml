@@ -17,4 +17,6 @@
     <string name="foreground_service_sample_last_location_title">Last location: </string>
     <string name="foreground_service_sample_last_location_fetching">Fetching…</string>
     <string name="foreground_service_no_beacon_set">No beacon set</string>
+
+    <string name="fmod_logo_description">FMOD Studio by Firelight Technologies Pty Ltd.</string>
 </resources>

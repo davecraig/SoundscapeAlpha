@@ -45,6 +45,10 @@
 
         </activity>
 
+        <activity
+            android:name=".gpx.GpxActivity">
+        </activity>
+
         <service
             android:name=".services.LocationService"
             android:enabled="true"

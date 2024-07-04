@@ -3,13 +3,11 @@ package com.scottishtecharmy.soundscape
 import android.location.Location
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -17,12 +15,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.scottishtecharmy.soundscape.ui.theme.ForegroundServiceTheme
-
 
 @Composable
 internal fun ForegroundServiceScreen(
@@ -32,7 +28,8 @@ internal fun ForegroundServiceScreen(
     beaconLocation: String?,
     tileString: String?,
     location: Location?,
-    onClick: () -> Unit,
+    onServiceClick: () -> Unit,
+    onGpxClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
 
@@ -47,7 +44,8 @@ internal fun ForegroundServiceScreen(
                 currentOrientation = currentOrientation,
                 location = location,
                 beaconLocation = beaconLocation,
-                onClick = onClick,
+                onServiceClick = onServiceClick,
+                onGpxClick = onGpxClick,
                 modifier = modifier
             )
         }
@@ -61,7 +59,8 @@ private fun ForegroundServiceSampleScreenContent(
     currentOrientation: String?,
     beaconLocation: String?,
     location: Location?,
-    onClick: () -> Unit,
+    onServiceClick: () -> Unit,
+    onGpxClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
 
@@ -88,7 +87,7 @@ private fun ForegroundServiceSampleScreenContent(
             ) {
                 ServiceStatusContent(
                     serviceRunning = serviceRunning,
-                    onClick = onClick
+                    onClick = onServiceClick
                 )
             }
 
@@ -105,6 +104,11 @@ private fun ForegroundServiceSampleScreenContent(
                     beacon = beaconLocation,
                     orientation = currentOrientation
                 )
+                Button(
+                    onClick = onGpxClick
+                ) {
+                    Text(text = "GPX")
+                }
             }
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
