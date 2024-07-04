@@ -128,8 +128,6 @@ private fun ServiceStatusContent(
     serviceRunning: Boolean,
     onClick: () -> Unit
 ) {
-    ServiceStatusRow(serviceRunning = serviceRunning)
-
     Spacer(modifier = Modifier.height(16.dp))
 
     Button(onClick = onClick) {
@@ -141,39 +139,6 @@ private fun ServiceStatusContent(
                     R.string.foreground_service_sample_button_start
                 }
             )
-        )
-    }
-}
-
-@Composable
-private fun ServiceStatusRow(
-    serviceRunning: Boolean,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier.fillMaxWidth()
-    ) {
-        Text(
-            text = stringResource(id = R.string.foreground_service_sample_status_title),
-            textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.titleMedium
-        )
-
-        Spacer(modifier = Modifier.width(8.dp))
-
-        Text(
-            text = if (serviceRunning) {
-                stringResource(id = R.string.foreground_service_sample_status_running)
-            } else {
-                stringResource(id = R.string.foreground_service_sample_status_not_running)
-            },
-            color = if (serviceRunning) {
-                Color.Green
-            } else {
-                Color.Red
-            },
         )
     }
 }
