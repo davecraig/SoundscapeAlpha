@@ -28,8 +28,8 @@ android {
         applicationId = "com.scottishtecharmy.soundscape"
         minSdk = 30
         targetSdk = 34
-        versionCode = 9
-        versionName = "0.0.9"
+        versionCode = 10
+        versionName = "0.0.9 ${versionName})"
 
         buildConfigField("String", "VERSION_NAME", "\"${versionName}\"")
 
