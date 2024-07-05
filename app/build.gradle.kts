@@ -32,6 +32,7 @@ android {
         versionName = "0.0.11"
 
         buildConfigField("String", "VERSION_NAME", "\"${versionName}\"")
+        buildConfigField("String", "FMOD_LIB", "\"fmod\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -148,4 +149,6 @@ dependencies {
     implementation ("com.github.ticofab:android-gpx-parser:2.3.1")
 
     implementation ("androidx.core:core-splashscreen:1.0.1")
+
+    implementation("ovh.plrapps:mapcompose-mp:0.9.3")
 }

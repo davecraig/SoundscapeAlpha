@@ -162,7 +162,6 @@ class NativeAudioEngine : AudioEngine, TextToSpeech.OnInitListener {
     companion object {
         private const val TAG = "NativeAudioEngine"
         init {
-            System.loadLibrary("fmod")
             System.loadLibrary("soundscape-audio")
         }
     }
