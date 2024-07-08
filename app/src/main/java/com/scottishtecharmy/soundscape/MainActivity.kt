@@ -220,6 +220,9 @@ class MainActivity : ComponentActivity() {
             // service is already running, stop it
             locationService?.stopForegroundService()
             locationService = null
+
+            // And exit application
+            finish()
         }
     }
 
