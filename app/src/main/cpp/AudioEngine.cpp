@@ -139,7 +139,7 @@ const BeaconDescriptor AudioEngine::msc_BeaconDescriptors[] =
 #endif
 
     AudioEngine::AudioEngine() noexcept
-               : m_BeaconTypeIndex(0) {
+               : m_BeaconTypeIndex(1) {
         FMOD_RESULT result;
 
         TRACE("%s %p", __FUNCTION__, this);
