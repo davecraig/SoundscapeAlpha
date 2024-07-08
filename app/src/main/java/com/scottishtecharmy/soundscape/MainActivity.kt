@@ -222,7 +222,7 @@ class MainActivity : ComponentActivity() {
             locationService = null
 
             // And exit application
-            finish()
+            finishAndRemoveTask()
         }
     }
 
