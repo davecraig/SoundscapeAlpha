@@ -5,4 +5,6 @@ plugins {
     id("com.google.dagger.hilt.android") version "2.50" apply false
     id("io.realm.kotlin") version "1.13.0" apply false
     id("com.google.devtools.ksp") version "1.9.22-1.0.17" apply false
+    // Add the dependency for the Google services Gradle plugin
+    id("com.google.gms.google-services") version "4.4.2" apply false
 }
