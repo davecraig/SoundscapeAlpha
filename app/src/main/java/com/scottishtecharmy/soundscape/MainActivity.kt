@@ -20,6 +20,8 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
+import com.google.android.gms.common.ConnectionResult
+import com.google.android.gms.common.GoogleApiAvailability
 import com.scottishtecharmy.soundscape.gpx.GpxActivity
 import com.scottishtecharmy.soundscape.services.LocationService
 import kotlinx.coroutines.delay
@@ -127,6 +129,11 @@ class MainActivity : ComponentActivity() {
         }
 
         org.fmod.FMOD.init(applicationContext)
+
+        if(GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(applicationContext) != ConnectionResult.SUCCESS)
+        {
+            Toast.makeText(this, "Google Play Services not available.", Toast.LENGTH_SHORT).show()
+        }
 
         setContent {
             ForegroundServiceScreen(
