@@ -296,7 +296,7 @@ const BeaconDescriptor AudioEngine::msc_BeaconDescriptors[] =
     {
         std::lock_guard<std::recursive_mutex> guard(m_BeaconsMutex);
         m_Beacons.insert(beacon);
-        TRACE("AddBeacon -> %u beacons", m_Beacons.size());
+        TRACE("AddBeacon -> %zu beacons", m_Beacons.size());
         if(queued)
         {
             if(m_QueuedBeacons.empty()) {
@@ -304,7 +304,7 @@ const BeaconDescriptor AudioEngine::msc_BeaconDescriptors[] =
                 beacon->PlayNow();
             }
             m_QueuedBeacons.push_back(beacon);
-            TRACE("Queue of %u", m_QueuedBeacons.size());
+            TRACE("Queue of %zu", m_QueuedBeacons.size());
         }
     }
 
@@ -313,7 +313,7 @@ const BeaconDescriptor AudioEngine::msc_BeaconDescriptors[] =
         std::lock_guard<std::recursive_mutex> guard(m_BeaconsMutex);
         m_Beacons.erase(beacon);
 
-        TRACE("RemoveBeacon -> %u beacons", m_Beacons.size());
+        TRACE("RemoveBeacon -> %zu beacons", m_Beacons.size());
     }
 
 

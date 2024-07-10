@@ -35,6 +35,7 @@ import com.google.android.gms.location.Priority
 import com.scottishtecharmy.soundscape.MainActivity
 import com.scottishtecharmy.soundscape.R
 import com.scottishtecharmy.soundscape.audio.NativeAudioEngine
+import com.scottishtecharmy.soundscape.geojsonparser.geojson.LngLatAlt
 import com.scottishtecharmy.soundscape.network.ITileDAO
 import com.scottishtecharmy.soundscape.network.OkhttpClientInstance
 import com.scottishtecharmy.soundscape.network.RetrofitClientInstance
@@ -81,7 +82,9 @@ class LocationService : Service() {
     private val _orientationFlow = MutableStateFlow<DeviceOrientation?>(null)
     var orientationFlow: StateFlow<DeviceOrientation?> = _orientationFlow
 
-
+    // Flow to return beacon location
+    private val _beaconFlow = MutableStateFlow<LngLatAlt?>(null)
+    var beaconFlow: StateFlow<LngLatAlt?> = _beaconFlow
 
     // Binder to allow local clients to Bind to our service
     inner class LocalBinder : Binder() {
@@ -128,6 +131,7 @@ class LocationService : Service() {
         super.onDestroy()
         Log.d(TAG, "onDestroy")
 
+        audioEngine.destroyBeacon(audioBeacon)
         audioEngine.destroy()
 
         fusedLocationClient.removeLocationUpdates(locationCallback)
@@ -203,13 +207,9 @@ class LocationService : Service() {
         fusedOrientationProviderClient =
             LocationServices.getFusedOrientationProviderClient(this)
 
-        /*listener = DeviceOrientationListener { orientation: DeviceOrientation ->
-                    // Use the orientation object
-
-                    Log.d(TAG, "Device Orientation: ${orientation.headingDegrees} deg")
-                }*/
         listener = DeviceOrientationListener { orientation ->
             _orientationFlow.value = orientation  // Emit the DeviceOrientation object
+            //Log.e("heading", "${orientation.headingDegrees}")
             val location = locationFlow.value
             if(location != null) {
                 audioEngine.updateGeometry(
@@ -326,6 +326,8 @@ class LocationService : Service() {
             audioEngine.destroyBeacon(audioBeacon)
         }
         audioBeacon = audioEngine.createBeacon(latitude, longitude)
+        // Report any change in beacon back to application
+        _beaconFlow.value = LngLatAlt(longitude, latitude)
     }
 
     companion object {

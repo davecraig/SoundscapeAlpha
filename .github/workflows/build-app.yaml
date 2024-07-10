@@ -50,6 +50,15 @@ jobs:
           echo $ENCODED_STRING > keystore-b64.txt
           base64 -d keystore-b64.txt > ${{ env.main_project_module }}/$SIGNING_KEY_STORE_PATH
 
+      # Setup Google maps keys
+      - name: Configure Google maps API key
+        env:
+          GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API }}
+
+        run: |
+          echo -n "MAPS_API_KEY=" > secrets.properties
+          echo $GOOGLE_MAPS_API_KEY >> secrets.properties
+
       # Run Tests Build
       - name: Run gradle tests
         run: ./gradlew test

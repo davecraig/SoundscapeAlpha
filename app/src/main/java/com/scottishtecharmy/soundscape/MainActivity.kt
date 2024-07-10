@@ -15,6 +15,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
@@ -22,11 +23,11 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
+import com.scottishtecharmy.soundscape.geojsonparser.geojson.LngLatAlt
 import com.scottishtecharmy.soundscape.gpx.GpxActivity
 import com.scottishtecharmy.soundscape.services.LocationService
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -36,16 +37,15 @@ class MainActivity : ComponentActivity() {
     private var locationService: LocationService? = null
 
     private var serviceBoundState by mutableStateOf(false)
-    private var displayableLocation by mutableStateOf<String?>(null)
-    private var displayableOrientation by mutableStateOf<String?>(null)
     private var displayableTileString by mutableStateOf<String?>(null)
-    private var displayableBeacon by mutableStateOf<String?>(null)
 
-    private var location by mutableStateOf<Location?>(null)
+    private var currentLocation by mutableStateOf<Location?>(null)
+    private var currentHeading by mutableFloatStateOf(0.0f)
+
     private var tileXY by mutableStateOf<Pair<Int, Int>?>(null)
 
-    private var intentLatitude: Double = 0.0
-    private var intentLongitude: Double = 0.0
+    private var intentLocation : LngLatAlt = LngLatAlt(0.0, 0.0)
+    private var beaconLocation by mutableStateOf<LngLatAlt?>(null)
 
     // needed to communicate with the service.
     private val connection = object : ServiceConnection {
@@ -120,10 +120,7 @@ class MainActivity : ComponentActivity() {
                     Log.e("intent","longitude: $longitude")
 
                     // We have a geo intent with a GPS position. Set a beacon at that point
-                    intentLatitude = latitude.toDouble()
-                    intentLongitude = longitude.toDouble()
-
-                    displayableBeacon = "Beacon: $latitude, $longitude"
+                    intentLocation = LngLatAlt(longitude.toDouble(), latitude.toDouble())
                 }
             }
         }
@@ -135,22 +132,6 @@ class MainActivity : ComponentActivity() {
             Toast.makeText(this, "Google Play Services not available.", Toast.LENGTH_SHORT).show()
         }
 
-        setContent {
-            ForegroundServiceScreen(
-                serviceRunning = serviceBoundState,
-                currentLocation = displayableLocation,
-                beaconLocation = displayableBeacon,
-                currentOrientation = displayableOrientation,
-                tileString = displayableTileString,
-                location = location,
-                onServiceClick = ::onStartOrStopForegroundServiceClick,
-                onGpxClick = {
-                    val intent = Intent(this, GpxActivity::class.java)
-                    startActivity(intent)
-                }
-            )
-        }
-
         checkAndRequestPermissions()
         tryToBindToServiceIfRunning()
     }
@@ -160,7 +141,6 @@ class MainActivity : ComponentActivity() {
         org.fmod.FMOD.close()
 
         // We leave the foreground service running - the user can click on the close button to stop it
-
         unbindService(connection)
     }
 
@@ -239,6 +219,22 @@ class MainActivity : ComponentActivity() {
      * It also tries to bind to the service to update the UI with location updates.
      */
     private fun startForegroundService() {
+
+        setContent {
+            ForegroundServiceScreen(
+                serviceRunning = serviceBoundState,
+                tileString = displayableTileString,
+                currentLocation = currentLocation,
+                currentHeading = currentHeading,
+                beaconLocation = beaconLocation,
+                onServiceClick = ::onStartOrStopForegroundServiceClick,
+                onGpxClick = {
+                    val intent = Intent(this, GpxActivity::class.java)
+                    startActivity(intent)
+                }
+            )
+        }
+
         // start the service
         startForegroundService(Intent(this, LocationService::class.java))
 
@@ -254,28 +250,23 @@ class MainActivity : ComponentActivity() {
 
     private fun onServiceConnected() {
 
-        if(intentLatitude != 0.0 && intentLongitude != 0.0)
-            locationService?.createBeacon(intentLatitude, intentLongitude)
-
         lifecycleScope.launch {
             // observe location updates from the service
-            locationService?.locationFlow?.map {
-                it?.let { location ->
-                    "${location.latitude}, ${location.longitude} (${location.accuracy})"
-                }
-            }?.collectLatest {
-                displayableLocation = it
+            locationService?.locationFlow?.collectLatest {
+                currentLocation = it
             }
         }
 
         lifecycleScope.launch {
-            locationService?.orientationFlow?.map {
-                it?.let {
-                    orientation ->
-                    "Device orientation: ${orientation.headingDegrees}"
-                }
-            }?.collect {
-                displayableOrientation = it
+            locationService?.orientationFlow?.collectLatest {
+                if(it != null)
+                    currentHeading = it.headingDegrees
+            }
+        }
+
+        lifecycleScope.launch {
+            locationService?.beaconFlow?.collect { value ->
+                beaconLocation = value
             }
         }
 
@@ -293,8 +284,9 @@ class MainActivity : ComponentActivity() {
             println(test)
         }
 
-
-
+        if(intentLocation.latitude != 0.0 && intentLocation.longitude != 0.0) {
+            locationService?.createBeacon(intentLocation.latitude, intentLocation.longitude)
+        }
     }
 
     companion object {
