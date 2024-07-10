@@ -5,8 +5,9 @@ plugins {
     id("com.google.dagger.hilt.android")
     //id("org.jetbrains.kotlin.kapt")
     id("io.realm.kotlin")
+    id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
     // Add the Google services Gradle plugin
-    id("com.google.gms.google-services")
+    //id("com.google.gms.google-services")
 }
 
 android {
@@ -30,8 +31,8 @@ android {
         applicationId = "com.scottishtecharmy.soundscape"
         minSdk = 30
         targetSdk = 34
-        versionCode = 14
-        versionName = "0.0.13"
+        versionCode = 15
+        versionName = "0.0.14"
 
         buildConfigField("String", "VERSION_NAME", "\"${versionName}\"")
         buildConfigField("String", "FMOD_LIB", "\"fmod\"")
@@ -58,14 +59,15 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "17"
     }
     buildFeatures {
         compose = true
+        viewBinding = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.10"
@@ -81,6 +83,21 @@ android {
             version = "3.22.1"
         }
     }
+}
+
+secrets {
+    // Optionally specify a different file name containing your secrets.
+    // The plugin defaults to "local.properties"
+    propertiesFileName = "secrets.properties"
+
+    // A properties file containing default secret values. This file can be
+    // checked in version control.
+    defaultPropertiesFileName = "local.defaults.properties"
+
+    // Configure which keys should be ignored by the plugin by providing regular expressions.
+    // "sdk.dir" is ignored by default.
+    ignoreList.add("keyToIgnore") // Ignore the key "keyToIgnore"
+    ignoreList.add("sdk.*")       // Ignore all keys matching the regexp "sdk.*"
 }
 
 dependencies {
@@ -99,6 +116,8 @@ dependencies {
     implementation("com.google.android.gms:play-services-location:21.2.0")
     implementation(libs.androidx.lifecycle.service)
     implementation(files("libs/fmod.jar"))
+    implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.constraintlayout)
     testImplementation("junit:junit:4.13.2")
     testImplementation("androidx.arch.core:core-testing:2.2.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.6.0")
@@ -152,7 +171,9 @@ dependencies {
 
     implementation ("androidx.core:core-splashscreen:1.0.1")
 
-    implementation("ovh.plrapps:mapcompose-mp:0.9.3")
+    // Maps SDK for Android
+    implementation ("com.google.android.gms:play-services-maps:18.2.0")
+    implementation ("com.google.maps.android:maps-compose:6.0.0")
 
     // Import the Firebase BoM
     implementation(platform("com.google.firebase:firebase-bom:33.1.1"))

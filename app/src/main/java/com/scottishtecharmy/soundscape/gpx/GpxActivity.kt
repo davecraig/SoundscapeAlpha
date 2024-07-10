@@ -3,12 +3,13 @@ package com.scottishtecharmy.soundscape.gpx
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
+import android.net.Uri
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import com.scottishtecharmy.soundscape.MainActivity
+import androidx.activity.result.contract.ActivityResultContracts
 import com.scottishtecharmy.soundscape.services.LocationService
 import com.scottishtecharmy.soundscape.ui.theme.SoundscapeAlphaTheme
 import io.ticofab.androidgpxparser.parser.GPXParser
@@ -49,16 +50,28 @@ class GpxActivity : ComponentActivity() {
             bindService(intent, connection, 0)
         }
     }
-    private fun parseGpxFile() {
+    private fun parseGpxFile(input : InputStream) {
+        Log.e("gpx", "Parsing GPX file")
+        settingsViewModel.clearWaypoints()
         val parser = GPXParser()
         try {
-            val input: InputStream = assets.open("Test.gpx")
             val parsedGpx: Gpx? = parser.parse(input)
             parsedGpx?.let {
 
+                // TODO: We're parsing WayPoints and RoutePoints here. We don't really need both,
+                //  but for testing it makes it easier.
+
+                parsedGpx.wayPoints.forEach { waypoint ->
+                    Log.e("gpx", "Waypoint " + waypoint.name)
+                    val wp = Waypoint(waypoint.name, waypoint.latitude, waypoint.longitude)
+                    settingsViewModel.addWaypoint(wp)
+                }
+
                 parsedGpx.routes.forEach { route ->
+                    Log.e("gpx", "Route " + route.routeName)
                     route.routePoints.forEach { waypoint ->
-                        settingsViewModel.addWaypoint(waypoint)
+                        val wp = Waypoint(waypoint.name, waypoint.latitude, waypoint.longitude)
+                        settingsViewModel.addWaypoint(wp)
                     }
                 }
             } ?: {
@@ -80,11 +93,24 @@ class GpxActivity : ComponentActivity() {
         tryToBindToServiceIfRunning()
 
         settingsViewModel = GpxViewModel()
-        parseGpxFile()
-
         settingsViewModel.navigateToMainEvent.observe(this) {
-            val intent = Intent(this, MainActivity::class.java)
-            startActivity(intent)
+            // We're done with the GPX activity, go back to the main activity
+            finish()
+        }
+
+        val getContent = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+            // Handle the selected file URI here
+            Log.e("gpx", "Open GPX " + uri?.toString())
+            uri?.let {
+                contentResolver.openInputStream(it)?.use { inputStream ->
+                    // Read the file content from the input stream
+                    parseGpxFile(inputStream)
+                }
+            }
+        }
+
+        settingsViewModel.openFileEvent.observe(this) {
+            getContent.launch("application/gpx+xml")
         }
     }
 

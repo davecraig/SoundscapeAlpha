@@ -3,6 +3,7 @@ package com.scottishtecharmy.soundscape
 import android.location.Location
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,16 +19,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
+import com.google.maps.android.compose.rememberMarkerState
+import com.scottishtecharmy.soundscape.geojsonparser.geojson.LngLatAlt
 import com.scottishtecharmy.soundscape.ui.theme.ForegroundServiceTheme
 
 @Composable
 internal fun ForegroundServiceScreen(
     serviceRunning: Boolean,
-    currentLocation: String?,
-    currentOrientation: String?,
-    beaconLocation: String?,
     tileString: String?,
-    location: Location?,
+    currentLocation: Location?,
+    currentHeading: Float,
+    beaconLocation: LngLatAlt?,
     onServiceClick: () -> Unit,
     onGpxClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -41,8 +50,7 @@ internal fun ForegroundServiceScreen(
             ForegroundServiceSampleScreenContent(
                 serviceRunning = serviceRunning,
                 currentLocation = currentLocation,
-                currentOrientation = currentOrientation,
-                location = location,
+                currentHeading = currentHeading,
                 beaconLocation = beaconLocation,
                 onServiceClick = onServiceClick,
                 onGpxClick = onGpxClick,
@@ -55,10 +63,9 @@ internal fun ForegroundServiceScreen(
 @Composable
 private fun ForegroundServiceSampleScreenContent(
     serviceRunning: Boolean,
-    currentLocation: String?,
-    currentOrientation: String?,
-    beaconLocation: String?,
-    location: Location?,
+    currentLocation: Location?,
+    currentHeading: Float,
+    beaconLocation: LngLatAlt?,
     onServiceClick: () -> Unit,
     onGpxClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -78,6 +85,24 @@ private fun ForegroundServiceSampleScreenContent(
                 .fillMaxWidth()
                 .weight(1f)
         ) {
+            Row {
+                val cameraPositionState = rememberCameraPositionState()
+                if(currentLocation != null)
+                    cameraPositionState.position = CameraPosition(LatLng(currentLocation.latitude, currentLocation.longitude), 15f, 45f, currentHeading)
+
+                val markerState = rememberMarkerState()
+                if(beaconLocation != null)
+                    markerState.position = LatLng(beaconLocation.latitude, beaconLocation.longitude)
+
+                GoogleMap(
+                    modifier = Modifier.height(550.dp),
+                    cameraPositionState = cameraPositionState,
+                    properties = MapProperties(isMyLocationEnabled = true)
+                )
+                {
+                    Marker(state = markerState, title = "Beacon")
+                }
+            }
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
@@ -90,26 +115,6 @@ private fun ForegroundServiceSampleScreenContent(
                     onClick = onServiceClick
                 )
             }
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            ) {
-                LocationUpdate(
-                    visible = serviceRunning,
-                    location = currentLocation,
-                    beacon = beaconLocation,
-                    orientation = currentOrientation
-                )
-                Button(
-                    onClick = onGpxClick
-                ) {
-                    Text(text = "GPX")
-                }
-            }
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Bottom,
@@ -117,6 +122,15 @@ private fun ForegroundServiceSampleScreenContent(
                     .fillMaxWidth()
                     .weight(1f)
             ) {
+                LocationUpdate(
+                    visible = serviceRunning,
+                    heading = currentHeading
+                )
+                Button(
+                    onClick = onGpxClick
+                ) {
+                    Text(text = "GPX")
+                }
                 Text(
                     text = "v" + BuildConfig.VERSION_NAME,
                     textAlign = TextAlign.Center,
@@ -150,30 +164,11 @@ private fun ServiceStatusContent(
 @Composable
 private fun LocationUpdate(
     visible: Boolean,
-    location: String?,
-    orientation: String?,
-    beacon: String?
+    heading: Float,
 ) {
     if (visible) {
-        Spacer(modifier = Modifier.height(32.dp))
-
         Text(
-            text = stringResource(id = R.string.foreground_service_sample_last_location_title),
-            style = MaterialTheme.typography.titleMedium
+            text = "Heading: $heading"
         )
-
-        Text(
-            text = location
-                ?: stringResource(id = R.string.foreground_service_sample_last_location_fetching)
-        )
-        Text(
-            text = beacon
-                ?: stringResource(id = R.string.foreground_service_no_beacon_set)
-        )
-        Text(
-            text = orientation
-                ?: stringResource(id = R.string.foreground_service_sample_last_location_fetching)
-        )
-
     }
 }
