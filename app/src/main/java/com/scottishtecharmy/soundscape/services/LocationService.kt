@@ -226,6 +226,14 @@ class LocationService : Service() {
         // Not clear on what the difference is...
         val executor = Executors.newSingleThreadExecutor()
         fusedOrientationProviderClient.requestOrientationUpdates(request, executor, listener)
+            .addOnFailureListener { e: Exception? ->
+                Log.e("orientation","FOP: Registration Failure, " + e.toString())
+                Toast.makeText(this, "FOP fail: " + e.toString(), Toast.LENGTH_LONG).show()
+            }
+            .addOnSuccessListener {
+                Log.e("orientation","FOP: Registration success")
+                Toast.makeText(this, "FOP success", Toast.LENGTH_LONG).show()
+            }
     }
 
 
