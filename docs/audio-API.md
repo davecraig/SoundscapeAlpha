@@ -1,13 +1,15 @@
+---
+tags: [Mermaid]
+mermaid: true
+---
+
 # Audio API for Soundscape
 This document aims to describe the API for a library that can be exposed to the main Kotlin code in the Soundscape app. On Android this library will be in C++ so that it can directly call the [FMOD library](https://www.fmod.com/core) which allows positioning of audio within a 3D space.
 
 ## iOS Soundscape audio classes
 The iOS app has a host of audio classes to support playback of beacons, text to speech and other sounds.
 
-```mermaid
----
-title: iOS audio classes
----
+<div class="mermaid">
 classDiagram
     class SoundBase{
         +SoundType type
@@ -62,8 +64,7 @@ classDiagram
     BaseAudioPlayer<|--DiscreteAudioPlayerDelegate
     AudioPlayer<|--DynamicAudioPlayer
     AVAudioPlayer<|--FadeableAudioPlayer
-
-```
+</div>
 
 * **GlyphSound** are short audio files with specific meaning to the user e.g. app going offline/online, or entering/leaving a waypoint. I find them fairly indistinguishable, but perhaps with use and practice their meaning becomes obvious.
 * **LayeredSound** seems to be for mixing sounds together. Each layer can have its own EQ parameters defined. 
@@ -107,10 +108,7 @@ To support head tracking prior to Android 13 we have to try and implement option
 
 There's [a great video](https://www.youtube.com/watch?v=Zwmhp7W6K6E) showing how to map Kotlin classes over to C++. The Kotlin class simply has a `long` which is the pointer to the C++ object and then this is passed into C wrapper functions which forward calls on to the C++ objects. The other useful bit is the `synchronized` keyword and the way that the Kotlin member functions are defined. With this knowledge we can then simply design Kotlin classes for the audio engine. The current classes we have in C++ from the proof of concept are:
 
-```mermaid
----
-title: C++ audio classes
----
+<div class="mermaid">
 classDiagram
 
     class BeaconBuffer{
@@ -177,7 +175,7 @@ classDiagram
     PositionedAudio <-- Beacon
     PositionedAudio <-- TextToSpeech
     AudioEngine *-- PositionedAudio
-```
+</div>
 
 The only thing that Kotlin needs to be able to do is create and destroy Beacons. An `AudioEngine` class to wrap this behaviour up with audio initialization and destruction makes sense.
 

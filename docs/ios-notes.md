@@ -1,4 +1,4 @@
-# Android Development
+# Various notes on required work
 
 The original Soundscape is an iOS app that provides 3D audio navigation for the blind or visually impaired. It has the added benefit that the map data is stored on a user device so it is resilient in the event of a network outage. Can we do the same on Android?
 
@@ -11,7 +11,7 @@ Above is a picture of a tile boundary with an artificial location in the center 
 We need to convert the GPS coordinates into the X/Y format and make our request to the backend Tile service. 
 
 
-**Deserializing our Tile data**
+## Deserializing our Tile data
 
 We've got our tile which is a string in the **GeoJSON** ([https://geojson.org/](https://geojson.org/)) format.
 At a high level our string consists of:
@@ -50,7 +50,7 @@ Original Soundscape appears to use Swift Realm to do this and there is an Androi
 [https://www.mongodb.com/docs/realm/introduction/](https://www.mongodb.com/docs/realm/introduction/)
 
 
-**Doing something useful with the Tile data**
+##Doing something useful with the Tile data##
 
 If we've got our Tile data in Kotlin objects then we can use standard GIS techniques to query the contents of the GeoJSON FeatureCollection.
 For example we might want to put bounding boxes around all the Points Of Interest so we can calculate how far way they are. Here’s a picture of bounding boxes around all the buildings (which looks a bit like a Mondrian painting if you squint):
@@ -58,7 +58,7 @@ For example we might want to put bounding boxes around all the Points Of Interes
 ![Untitled](Android%20Development%20e8357d834ca14e1bb6ecd0a70a501c2d/Untitled%205.png)
 
 
-**Intersections**
+## Intersections
  
 Here’s a picture of the simplest intersection where one road transitions into another road (Weston Road into Long Ashton Road) The triangle is the “field of view” where a device is on Weston Road and pointing towards Long Ashton Road so we can detect when the **Intersection** is in the “field of view”/triangle. The middle marker is the **Intersection**/transition between the two roads. As the triangle represents a FOV at a point in time an example callout might be “You are walking along Weston Road”
 
@@ -98,7 +98,7 @@ Above is an image generated of one of the types of Field of View (”ahead_behin
 
 Above is an image of one of the types of Field of View (”right_left”) that Soundscape uses. The red triangle is the relative direction “ahead” but the real device heading is East or 90.0 degrees. You can see that it is a simpler “ahead”, “right”, “behind” and “left” however it has a bias towards "left” and “right”
 
-**Types of Simple Intersections**
+## Types of Simple Intersections
 
 Below are a list of simple intersection images that we want to be able to detect (we can currently detect all of them)
 
@@ -137,16 +137,16 @@ Simple **crossroads type 2** if you are standing at the marker on Lansdown Road 
 Simple crossroads type 3 … TODO
 
 
-**3D Audio and headphones**
+## 3D Audio and headphones
 Core feature of Soundscape is the 3D audio part.
 
-**Routing**
+## Routing
 Open source project here:
 [https://github.com/graphhopper/graphhopper](https://github.com/graphhopper/graphhopper)
 Google offer it but it costs:
 [https://mapsplatform.google.com/solutions/offer-efficient-routes/](https://mapsplatform.google.com/solutions/offer-efficient-routes/)
 
-**How do we want to display a map on the screen?**
+## How do we want to display a map on the screen?
 Soundscape iOS uses Apple Maps but you can't hook into it from Android.
 Make our own? Here’s a nice Docker image which will create an Open Street Map tile server for us - web/database/map tile renderer:
 [https://github.com/Overv/openstreetmap-tile-server](https://github.com/Overv/openstreetmap-tile-server)
