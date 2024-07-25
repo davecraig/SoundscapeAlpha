@@ -1,7 +1,5 @@
 name: Bump version code and commit
 on:
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
       
 jobs:
   bump-version-and-open-pr:
@@ -13,10 +11,8 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-        
       - name: Extract existing version code from build.gradle
+        id: current-version
         run: |
           # Get existing version code from build.gradle
           version_code=$(grep "versionCode" app/build.gradle.kts | awk '{print $3}' | tr -d '\n')
@@ -33,18 +29,24 @@ jobs:
           # app/build.gradle.kts. When doing this, reset the build version
           # to zero.
 
-          # Set environment variable for later use
-          echo "VERSION_CODE=$version_code" >> $GITHUB_ENV
-          echo "VERSION_NAME=$major_version.$minor_version.$build_version" >> $GITHUB_ENV
+          # Set output variables for later use
+          echo "VERSION_CODE=$version_code" >> $GITHUB_OUTPUT
+          echo "VERSION_NAME=$major_version.$minor_version.$build_version" >> $GITHUB_OUTPUT
 
       - name: Increase version code and change version name
+        env:
+          VERSION_CODE: ${{ steps.current-version.outputs.VERSION_CODE }}
+          VERSION_NAME: ${{ steps.current-version.outputs.VERSION_NAME }}
         run: |
           # Update build.gradle with new version code and name
-          echo "${{ env.VERSION_CODE }} - ${{ env.VERSION_NAME }}"
-          sed -i "s/versionCode = [0-9]\+/versionCode = ${{ env.VERSION_CODE }}/g" app/build.gradle.kts
-          sed -i "s/versionName = \"[^\"]*\"/versionName = \"${{ env.VERSION_NAME }}\"/g" app/build.gradle.kts
+          echo "$VERSION_CODE - $env.VERSION_NAME"
+          sed -i "s/versionCode = [0-9]\+/versionCode = $VERSION_CODE/g" app/build.gradle.kts
+          sed -i "s/versionName = \"[^\"]*\"/versionName = \"$VERSION_NAME\"/g" app/build.gradle.kts
 
       - uses: stefanzweifel/git-auto-commit-action@v5
+        env:
+          VERSION_CODE: ${{ steps.current-version.outputs.VERSION_CODE }}
+          VERSION_NAME: ${{ steps.current-version.outputs.VERSION_NAME }}
         with:
-          commit_message: "Bump version to ${{ env.VERSION_NAME }}, version code ${{ env.VERSION_CODE }}"
-          tagging_message: "soundscape-${{ env.VERSION_NAME }}"
+          commit_message: "Bump version to $VERSION_NAME, version code $VERSION_CODE"
+          tagging_message: "soundscape-$VERSION_NAME"
