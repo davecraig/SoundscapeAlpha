@@ -6,6 +6,12 @@ on:
 jobs:
   bump-version-and-open-pr:
     runs-on: ubuntu-latest
+    
+    permissions:
+      # Give the default GITHUB_TOKEN write permission to commit and push the
+      # added or changed files to the repository.
+      contents: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -38,11 +44,7 @@ jobs:
           sed -i "s/versionCode = [0-9]\+/versionCode = ${{ env.VERSION_CODE }}/g" app/build.gradle.kts
           sed -i "s/versionName = \"[^\"]*\"/versionName = \"${{ env.VERSION_NAME }}\"/g" app/build.gradle.kts
 
-      - name: Commit and push changes
-        run: |
-          git config user.email "davecraig@unbalancedaudio.com"
-          git config user.name "davecraig"
-          git commit -am "Bump version to ${{ env.VERSION_NAME }}, version code ${{ env.VERSION_CODE }}"
-          git push origin HEAD
-          git tag soundscape-${{ env.VERSION_NAME }}
-          git push --tags
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Bump version to ${{ env.VERSION_NAME }}, version code ${{ env.VERSION_CODE }}"
+          tagging_message: "soundscape-${{ env.VERSION_NAME }}"
